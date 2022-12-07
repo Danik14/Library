@@ -8,9 +8,7 @@ import (
 
 func (app *application) routes() *mux.Router {
 	router := mux.NewRouter()
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("hello world"))
-	})
+	router.HandleFunc("/", app.listAllBooks).Methods(http.MethodGet)
 
 	return router
 }
