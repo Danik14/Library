@@ -13,6 +13,6 @@ type Book struct {
 	Version   int32     `json:"version"`
 }
 
-func NewBook(id int64, title string, author string, year string, pages int, genres []string, version int32) *Book {
-	return &Book{ID: id, CreatedAt: time.Now(), Title: title, Author: author, Year: year, Pages: pages, Genres: genres, Version: version}
+func NewBook(id int64, title string, author string, year string, pages int, genres []string, version int32) (*Book, error) {
+	return &Book{ID: id, CreatedAt: time.Now(), Title: title, Author: author, Year: year, Pages: pages, Genres: genres, Version: version}, nil
 }
