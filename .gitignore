@@ -6,6 +6,7 @@
 
 # Ignore files related to API keys
 .envtls/
+.env
 
 # Ignore tls certificates
 tls/

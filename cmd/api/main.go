@@ -11,35 +11,40 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
-type config struct {
-	port int
-	env  string
-}
+// type config struct {
+// 	port int
+// 	// env  string
+// }
 
 type application struct {
-	config config
+	// config config
 	logger *log.Logger
 }
 
 func main() {
-	var cfg config
+	// var cfg config
 
-	flag.IntVar(&cfg.port, "port", 4000, "API server port")
-	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
-
+	// flag.IntVar(&cfg.port, "port", 4000, "API server port")
+	// flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
+	err := godotenv.Load()
+	if err != nil {
+		log.Panic("Error loading .env file")
+	}
 	flag.Parse()
 
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
 	app := &application{
-		config: cfg,
+		// config: cfg,
 		logger: logger,
 	}
 
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.port),
+		Addr:         fmt.Sprintf(":%s", os.Getenv("PORT")), //cfg.port),
 		Handler:      app.routes(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
