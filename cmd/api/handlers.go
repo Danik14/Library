@@ -17,7 +17,7 @@ func (app *application) listAllBooks(w http.ResponseWriter, r *http.Request) {
 
 	err = app.writeJSON(w, http.StatusOK, env, nil)
 	if err != nil {
-		app.errorResponse(w, r, http.StatusBadRequest, "JSON error")
+		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 }
@@ -31,7 +31,7 @@ func (app *application) listOneBook(w http.ResponseWriter, r *http.Request) {
 
 	err = app.writeJSON(w, http.StatusOK, env, nil)
 	if err != nil {
-		app.errorResponse(w, r, http.StatusBadRequest, "JSON error")
+		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 }
@@ -42,7 +42,7 @@ func (app *application) createBook(w http.ResponseWriter, r *http.Request) {
 	err := app.readJSON(w, r, book)
 	if err != nil {
 		app.logError(r, err)
-		app.errorResponse(w, r, http.StatusBadRequest, "JSON error")
+		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -52,7 +52,7 @@ func (app *application) createBook(w http.ResponseWriter, r *http.Request) {
 func (app *application) listAllUsers(w http.ResponseWriter, r *http.Request) {
 	user, err := models.NewUser("Danik", "Slave", "danik_slave@gmail.com", "123", time.Now(), 1)
 	if err != nil {
-		app.errorResponse(w, r, http.StatusBadRequest, "JSON Error")
+		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 	env := envelope{"user": user}
@@ -66,7 +66,7 @@ func (app *application) createUser(w http.ResponseWriter, r *http.Request) {
 	err := app.readJSON(w, r, book)
 	if err != nil {
 		app.logError(r, err)
-		app.errorResponse(w, r, http.StatusBadRequest, "JSON error")
+		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 
