@@ -31,6 +31,7 @@ func main() {
 	// flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	// flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
 	err := godotenv.Load()
+	// err := godotenv.Load("../../.env")
 	if err != nil {
 		log.Panic("Error loading .env file")
 	}

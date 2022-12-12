@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Danik14/library/internal/models"
+	"github.com/Danik14/library/internal/validator"
 )
 
 func (app *application) listAllBooks(w http.ResponseWriter, r *http.Request) {
@@ -61,14 +62,38 @@ func (app *application) listAllUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) createUser(w http.ResponseWriter, r *http.Request) {
-	book := &models.Book{}
-
-	err := app.readJSON(w, r, book)
+	var input struct {
+		FirstName string    `json:"firstName"`
+		LastName  string    `json:"lastName"`
+		Email     string    `json:"email"`
+		Password  string    `json:"password"`
+		DOB       time.Time `json:"dob"` // date of birth
+	}
+	err := app.readJSON(w, r, &input)
 	if err != nil {
 		app.logError(r, err)
 		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	fmt.Println(book)
+	// Copy the values from the input struct to a new Movie struct.
+	user := &models.User{
+		FirstName:      input.FirstName,
+		LastName:       input.LastName,
+		Email:          input.Email,
+		HashedPassword: input.Password,
+		DOB:            input.DOB,
+	}
+
+	// Initialize a new Validator.
+	v := validator.New()
+	// Call the ValidateMovie() function and return a response containing the errors if
+	// any of the checks fail.
+	if models.ValidateUser(v, user); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	fmt.Fprintf(w, "%+v\n", input)
+
+	// fmt.Println(input)
 }
