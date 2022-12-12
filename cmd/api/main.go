@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,33 +14,59 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
-// type config struct {
-// 	port int
-// 	// env  string
-//
+type config struct {
+	// port int
+	// env  string
+	db struct {
+		dsn          string
+		maxOpenConns int
+		maxIdleConns int
+		maxIdleTime  string
+	}
+}
 
 type application struct {
-	// config config
+	config config
 	logger *log.Logger
 }
 
 func main() {
-	// var cfg config
+	var cfg config
 
 	// flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	// flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
+	// flag.Parse()
+	// err := godotenv.Load("../../.env")
+	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL max open connections")
+	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
+	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL max connection idle time")
+	flag.Parse()
+
 	err := godotenv.Load()
 	if err != nil {
 		log.Panic("Error loading .env file")
 	}
-	flag.Parse()
+
+	cfg.db.dsn = os.Getenv("DB-DSN") //in file .env: DB-DSN="postgres://user:password@localhost/dbName"
 
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
+	db, err := openDB(cfg)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	// Defer a call to db.Close() so that the connection pool is closed before the
+	// main() function exits.
+	defer db.Close()
+	// Also log a message to say that the connection pool has been successfully
+	// established.
+	logger.Printf("database connection pool established")
+
 	app := &application{
-		// config: cfg,
+		config: cfg,
 		logger: logger,
 	}
 
@@ -51,7 +78,7 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 	}
 
-	fmt.Printf("Starting server on port: %s \n", srv.Addr)
+	logger.Printf("Starting server on port: %s \n", srv.Addr)
 
 	// Initializing the server in a goroutine so that
 	// it won't block the graceful shutdown handling below
@@ -85,4 +112,39 @@ func main() {
 
 	log.Println("Server exiting")
 
+}
+
+func openDB(cfg config) (*sql.DB, error) {
+	// Use sql.Open() to create an empty connection pool, using the DSN from the config
+	// struct.
+	db, err := sql.Open("postgres", cfg.db.dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	db.SetMaxOpenConns(cfg.db.maxOpenConns)
+
+	// Set the maximum number of idle connections in the pool. Again, passing a value
+	// less than or equal to 0 will mean there is no limit.
+	db.SetMaxIdleConns(cfg.db.maxIdleConns)
+
+	// Use the time.ParseDuration() function to convert the idle timeout duration string
+	// to a time.Duration type.
+	duration, err := time.ParseDuration(cfg.db.maxIdleTime)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set the maximum idle timeout.
+	db.SetConnMaxIdleTime(duration)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err = db.PingContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return the sql.DB connection pool.
+	return db, nil
 }

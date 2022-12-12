@@ -28,6 +28,10 @@ func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, st
 	}
 }
 
+// func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Request, err error) {
+// 	app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+// }
+
 // The serverErrorResponse() method will be used when our application encounters an
 // unexpected problem at runtime. It logs the detailed error message, then uses the
 // errorResponse() helper to send a 500 Internal Server Error status code and JSON
@@ -54,4 +58,10 @@ func (app *application) methodNotAllowedResponse(w http.ResponseWriter, r *http.
 
 func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Request, err error) {
 	app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+}
+
+// Note that the errors parameter here has the type map[string]string, which is exactly
+// the same as the errors map contained in our Validator type.
+func (app *application) failedValidationResponse(w http.ResponseWriter, r *http.Request, errors map[string]string) {
+	app.errorResponse(w, r, http.StatusUnprocessableEntity, errors)
 }
