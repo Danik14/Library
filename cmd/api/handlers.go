@@ -37,12 +37,13 @@ func (app *application) listOneBook(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) createBook(w http.ResponseWriter, r *http.Request) {
+
 	book := &models.Book{}
 
 	err := app.readJSON(w, r, book)
 	if err != nil {
 		app.logError(r, err)
-		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
@@ -52,7 +53,7 @@ func (app *application) createBook(w http.ResponseWriter, r *http.Request) {
 func (app *application) listAllUsers(w http.ResponseWriter, r *http.Request) {
 	user, err := models.NewUser("Danik", "Slave", "danik_slave@gmail.com", "123", time.Now(), 1)
 	if err != nil {
-		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+		app.badRequestResponse(w, r, err)
 		return
 	}
 	env := envelope{"user": user}
@@ -66,7 +67,7 @@ func (app *application) createUser(w http.ResponseWriter, r *http.Request) {
 	err := app.readJSON(w, r, book)
 	if err != nil {
 		app.logError(r, err)
-		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
