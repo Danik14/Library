@@ -10,7 +10,7 @@ import (
 )
 
 func (app *application) listAllBooks(w http.ResponseWriter, r *http.Request) {
-	book, err := models.NewBook(1, "AlibaSlave", "Danik", "1964", 300, []string{"gachi"}, 1)
+	book, err := models.NewBook("AlibaSlave", "Danik", "1964", 300, []string{"gachi"})
 	if err != nil {
 		app.logger.Fatal("Book error")
 	}
@@ -24,7 +24,7 @@ func (app *application) listAllBooks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) listOneBook(w http.ResponseWriter, r *http.Request) {
-	book, err := models.NewBook(1, "AlibaSlave", "Danik", "1964", 300, []string{"gachi"}, 1)
+	book, err := models.NewBook("AlibaSlave", "Danik", "1964", 300, []string{"gachi"})
 	if err != nil {
 		app.logger.Fatal("User error")
 	}
@@ -39,12 +39,24 @@ func (app *application) listOneBook(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) createBook(w http.ResponseWriter, r *http.Request) {
 
-	book := &models.Book{}
+	var input struct {
+		Title  string   `json:"title"`
+		Author string   `json:"author"`
+		Year   string   `json:"year"`
+		Pages  int      `json:"pages"`
+		Genres []string `json:"genres"`
+	}
 
-	err := app.readJSON(w, r, book)
+	err := app.readJSON(w, r, &input)
 	if err != nil {
 		app.logError(r, err)
 		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	book, err := models.NewBook(input.Title, input.Author, input.Year, input.Pages, input.Genres)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
 		return
 	}
 
