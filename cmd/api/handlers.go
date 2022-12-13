@@ -10,7 +10,7 @@ import (
 )
 
 func (app *application) listAllBooks(w http.ResponseWriter, r *http.Request) {
-	book, err := models.NewBook("AlibaSlave", "Danik", "1964", 300, []string{"gachi"})
+	book, err := models.NewBook("AlibaSlave", "Danik", 1964, 300, []string{"gachi"})
 	if err != nil {
 		app.logger.Fatal("Book error")
 	}
@@ -24,7 +24,7 @@ func (app *application) listAllBooks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) listOneBook(w http.ResponseWriter, r *http.Request) {
-	book, err := models.NewBook("AlibaSlave", "Danik", "1964", 300, []string{"gachi"})
+	book, err := models.NewBook("AlibaSlave", "Danik", 1964, 300, []string{"gachi"})
 	if err != nil {
 		app.logger.Fatal("User error")
 	}
@@ -42,8 +42,8 @@ func (app *application) createBook(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Title  string   `json:"title"`
 		Author string   `json:"author"`
-		Year   string   `json:"year"`
-		Pages  int      `json:"pages"`
+		Year   uint32   `json:"year"`
+		Pages  uint32   `json:"pages"`
 		Genres []string `json:"genres"`
 	}
 
