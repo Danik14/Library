@@ -45,17 +45,18 @@ func main() {
 	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL max connection idle time")
 	flag.Parse()
 
+	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime|log.LstdFlags|log.Lshortfile)
+
 	err := godotenv.Load()
 	if err != nil {
-		log.Panic("Error loading .env file")
+		logger.Panic("Error loading .env file")
 	}
 
 	cfg.db.dsn = os.Getenv("DB-DSN") //in file .env: DB-DSN="postgres://user:password@localhost/dbName"
-
-	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
-
+	fmt.Println(cfg.db.dsn)
 	db, err := openDB(cfg)
 	if err != nil {
+		fmt.Println(1)
 		logger.Fatal(err)
 	}
 	// Defer a call to db.Close() so that the connection pool is closed before the

@@ -18,6 +18,10 @@ tls/
 *.so
 *.dylib
 
+
+# Debugging files
+.vscode
+
 # Test binary, built with `go test -c`
 *.test
 
