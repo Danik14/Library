@@ -3,21 +3,25 @@ package main
 import (
 	"net/http"
 
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 )
 
-func (app *application) routes() *mux.Router {
-	router := mux.NewRouter()
+func (app *application) routes() *httprouter.Router {
+	router := httprouter.New()
 
-	router.MethodNotAllowedHandler = http.HandlerFunc(app.methodNotAllowedResponse)
+	// router.MethodNotAllowedHandler = http.HandlerFunc(app.methodNotAllowedResponse)
 
-	router.HandleFunc("/", app.listAllBooks).Methods(http.MethodGet)
-	router.HandleFunc("/user", app.listAllUsers).Methods(http.MethodGet)
-	router.HandleFunc("/user", app.createUser).Methods(http.MethodPost)
+	router.HandlerFunc(http.MethodGet, "/", app.listAllBooks)
 
-	router.HandleFunc("/book/getAll", app.listAllBooks).Methods(http.MethodGet)
-	router.HandleFunc("/book/getOne", app.listOneBook).Methods(http.MethodGet)
-	router.HandleFunc("/book/create", app.createBook).Methods(http.MethodPost)
+	// router.HandleFunc("/user", app.listAllUsers).Methods(http.MethodGet)
+	router.HandlerFunc(http.MethodPost, "/user", app.createUserHandler)
+	router.HandlerFunc(http.MethodGet, "/user/:id", app.showUserHandler)
+	router.HandlerFunc(http.MethodPut, "/user/:id", app.updateUserHandler)
+	router.HandlerFunc(http.MethodDelete, "/user/:id", app.deleteUserHandler)
+
+	router.HandlerFunc(http.MethodGet, "/book/getAll", app.listAllBooks)
+	router.HandlerFunc(http.MethodGet, "/book/getOne", app.listOneBook)
+	router.HandlerFunc(http.MethodPost, "/book/create", app.createBook)
 
 	return router
 }
