@@ -12,13 +12,13 @@ type Book struct {
 	Title     string    `json:"title"`
 	Author    string    `json:"author"`
 	Year      uint32    `json:"year,omitempty"`
-	Pages     uint32    `json:"pages,omitempty"`
+	Pages     Pages     `json:"pages,omitempty"`
 	Genres    []string  `json:"genres,omitempty"`
 	Version   int32     `json:"version"`
 }
 
 func NewBook(title string, author string, year uint32, pages uint32, genres []string) (*Book, error) {
-	return &Book{CreatedAt: time.Now(), Title: title, Author: author, Year: year, Pages: pages, Genres: genres}, nil
+	return &Book{CreatedAt: time.Now(), Title: title, Author: author, Year: year, Pages: Pages(pages), Genres: genres}, nil
 }
 
 func ValidateBook(v *validator.Validator, book *Book) {
