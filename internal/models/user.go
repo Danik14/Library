@@ -7,10 +7,11 @@ import (
 
 	"github.com/Danik14/library/internal/validator"
 	"github.com/lib/pq"
+	uuid "github.com/satori/go.uuid"
 )
 
 type User struct {
-	ID             int64     `json:"id"`
+	ID             uuid.UUID `json:"id"`
 	CreatedAt      time.Time `json:"-"`
 	FirstName      string    `json:"firstName"`
 	LastName       string    `json:"lastName"`
@@ -44,10 +45,10 @@ func (u UserModel) Insert(user *User) error {
 	return u.DB.QueryRow(query, args...).Scan(&user.ID, &user.CreatedAt, &user.Version)
 }
 
-func (u UserModel) Get(id int64) (*User, error) {
-	if id < 1 {
-		return nil, ErrRecordNotFound
-	}
+func (u UserModel) Get(id uuid.UUID) (*User, error) {
+	// if id < 1 {
+	// 	return nil, ErrRecordNotFound
+	// }
 	// Define the SQL query for retrieving the movie data.
 	query := `SELECT id, createdAt, firstName, lastName, email, hashedPassword, dob, version FROM users WHERE id = $1`
 	// Declare a Movie struct to hold the data returned by the query.
@@ -102,11 +103,11 @@ func (u UserModel) Update(user *User) error {
 	return u.DB.QueryRow(query, args...).Scan(&user.Version)
 }
 
-func (u UserModel) Delete(id int64) error {
+func (u UserModel) Delete(id uuid.UUID) error {
 	// Return an ErrRecordNotFound error if the movie ID is less than 1.
-	if id < 1 {
-		return ErrRecordNotFound
-	}
+	// if id < 1 {
+	// 	return ErrRecordNotFound
+	// }
 	// Construct the SQL query to delete the record.
 	query := `DELETE FROM users WHERE id = $1`
 	// Execute the SQL query using the Exec() method, passing in the id variable as

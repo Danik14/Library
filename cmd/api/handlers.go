@@ -128,7 +128,7 @@ func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) showUserHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := app.readIDParam(r)
+	id, err := app.readUUIDParam(r)
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
@@ -152,7 +152,7 @@ func (app *application) showUserHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (app *application) updateUserHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := app.readIDParam(r)
+	id, err := app.readUUIDParam(r)
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
@@ -212,7 +212,7 @@ func (app *application) updateUserHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := app.readIDParam(r)
+	id, err := app.readUUIDParam(r)
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
