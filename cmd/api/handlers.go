@@ -171,11 +171,11 @@ func (app *application) updateUserHandler(w http.ResponseWriter, r *http.Request
 	}
 	// Declare an input struct to hold the expected data from the client.
 	var input struct {
-		FirstName string    `json:"firstName"`
-		LastName  string    `json:"lastName"`
-		Email     string    `json:"email"`
-		Password  string    `json:"password"`
-		DOB       time.Time `json:"dob"` // date of birth
+		FirstName *string    `json:"firstName"`
+		LastName  *string    `json:"lastName"`
+		Email     *string    `json:"email"`
+		Password  *string    `json:"password"`
+		DOB       *time.Time `json:"dob"` // date of birth
 	}
 	// Read the JSON request body data into the input struct.
 	err = app.readJSON(w, r, &input)
@@ -185,11 +185,21 @@ func (app *application) updateUserHandler(w http.ResponseWriter, r *http.Request
 	}
 	// Copy the values from the request body to the appropriate fields of the movie
 	// record.
-	user.FirstName = input.FirstName
-	user.LastName = input.LastName
-	user.Email = input.Email
-	user.HashedPassword = input.Password
-	user.DOB = input.DOB
+	if input.FirstName != nil {
+		user.FirstName = *input.FirstName
+	}
+	if input.LastName != nil {
+		user.LastName = *input.LastName
+	}
+	if input.Email != nil {
+		user.Email = *input.Email
+	}
+	if input.Password != nil {
+		user.HashedPassword = *input.Password
+	}
+	if input.DOB != nil {
+		user.DOB = *input.DOB
+	}
 
 	// Validate the updated movie record, sending the client a 422 Unprocessable Entity
 	// response if any checks fail.
@@ -201,7 +211,13 @@ func (app *application) updateUserHandler(w http.ResponseWriter, r *http.Request
 	// Pass the updated movie record to our new Update() method.
 	err = app.models.Users.Update(user)
 	if err != nil {
-		app.serverErrorResponse(w, r, err)
+
+		switch {
+		case errors.Is(err, models.ErrEditConflict):
+			app.editConflictResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
 		return
 	}
 	// Write the updated movie record in a JSON response.

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"time"
@@ -39,10 +40,13 @@ func (u UserModel) Insert(user *User) error {
 	// 	return nil, err
 	// }
 	args := []any{user.FirstName, user.LastName, user.Email, user.HashedPassword, pq.FormatTimestamp(user.DOB)}
-	// Use the QueryRow() method to execute the SQL query on our connection pool,
-	// passing in the args slice as a variadic parameter and scanning the system-
-	// generated id, created_at and version values into the movie struct.
-	return u.DB.QueryRow(query, args...).Scan(&user.ID, &user.CreatedAt, &user.Version)
+
+	// Create a context with a 3-second timeout.// Create a context with a 3-second timeout.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// Use QueryRowContext() and pass the context as the first argument.
+	return u.DB.QueryRowContext(ctx, query, args...).Scan(&user.ID, &user.CreatedAt, &user.Version)
 }
 
 func (u UserModel) Get(id uuid.UUID) (*User, error) {
@@ -51,12 +55,20 @@ func (u UserModel) Get(id uuid.UUID) (*User, error) {
 	// }
 	// Define the SQL query for retrieving the movie data.
 	query := `SELECT id, createdAt, firstName, lastName, email, hashedPassword, dob, version FROM users WHERE id = $1`
+
 	// Declare a Movie struct to hold the data returned by the query.
 	var user User // Execute the query using the QueryRow() method, passing in the provided id value
-	// as a placeholder parameter, and scan the response data into the fields of the
-	// Movie struct. Importantly, notice that we need to convert the scan target for the
-	// genres column using the pq.Array() adapter function again.
-	err := u.DB.QueryRow(query, id).Scan(
+
+	// Use the context.WithTimeout() function to create a context.Context which carries a
+	// 3-second timeout deadline. Note that we're using the empty context.Background()
+	// as the 'parent' context.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	// Importantly, use defer to make sure that we cancel the context before the Get()
+	// method returns.
+	defer cancel()
+	// Use the QueryRowContext() method to execute the query, passing in the context
+	// with the deadline as the first argument.
+	err := u.DB.QueryRowContext(ctx, query, id).Scan(
 		&user.ID,
 		&user.CreatedAt,
 		&user.FirstName,
@@ -87,7 +99,7 @@ func (u UserModel) Update(user *User) error {
 	query := `
 	UPDATE users
 	SET firstName = $1, lastName = $2, email = $3, hashedPassword = $4, dob = $5, version = version + 1
-	WHERE id = $6
+	WHERE id = $6 AND version = $7
 	RETURNING version`
 	// Create an args slice containing the values for the placeholder parameters.
 	args := []any{
@@ -97,10 +109,24 @@ func (u UserModel) Update(user *User) error {
 		user.HashedPassword,
 		user.DOB,
 		user.ID,
+		user.Version,
 	}
-	// Use the QueryRow() method to execute the query, passing in the args slice as a
-	// variadic parameter and scanning the new version value into the movie struct.
-	return u.DB.QueryRow(query, args...).Scan(&user.Version)
+
+	// Create a context with a 3-second timeout.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	// Use QueryRowContext() and pass the context as the first argument.// Use QueryRowContext() and pass the context as the first argument.
+	err := u.DB.QueryRowContext(ctx, query, args...).Scan(&user.Version)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrEditConflict
+		default:
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (u UserModel) Delete(id uuid.UUID) error {
@@ -110,13 +136,15 @@ func (u UserModel) Delete(id uuid.UUID) error {
 	// }
 	// Construct the SQL query to delete the record.
 	query := `DELETE FROM users WHERE id = $1`
-	// Execute the SQL query using the Exec() method, passing in the id variable as
-	// the value for the placeholder parameter. The Exec() method returns a sql.Result
-	// object.
-	result, err := u.DB.Exec(query, id)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	// Use ExecContext() and pass the context as the first argument.
+	result, err := u.DB.ExecContext(ctx, query, id)
 	if err != nil {
 		return err
 	}
+
 	// Call the RowsAffected() method on the sql.Result object to get the number of rows
 	// affected by the query.
 	rowsAffected, err := result.RowsAffected()
