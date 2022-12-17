@@ -52,7 +52,7 @@ func main() {
 		logger.Panic("Error loading .env file")
 	}
 
-	cfg.db.dsn = os.Getenv("DB-DSN") //in file .env: DB-DSN="postgres://user:password@localhost/dbName"
+	cfg.db.dsn = os.Getenv("DB-DSN") //in file .env: DB-DSN="postgres://user:password@localhost/dbName?sslmode=disable"
 	fmt.Println(cfg.db.dsn)
 	db, err := openDB(cfg)
 	if err != nil {
