@@ -14,6 +14,7 @@ func (app *application) routes() *httprouter.Router {
 	router.HandlerFunc(http.MethodGet, "/", app.listAllBooks)
 
 	// router.HandleFunc("/user", app.listAllUsers).Methods(http.MethodGet)
+	router.HandlerFunc(http.MethodGet, "/user", app.listUsersHandler)
 	router.HandlerFunc(http.MethodPost, "/user", app.createUserHandler)
 	router.HandlerFunc(http.MethodGet, "/user/:id", app.showUserHandler)
 	router.HandlerFunc(http.MethodPatch, "/user/:id", app.updateUserHandler)

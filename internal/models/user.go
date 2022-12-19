@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
+	"github.com/Danik14/library/internal/data"
 	"github.com/Danik14/library/internal/validator"
 	"github.com/lib/pq"
 	uuid "github.com/satori/go.uuid"
@@ -47,6 +49,73 @@ func (u UserModel) Insert(user *User) error {
 
 	// Use QueryRowContext() and pass the context as the first argument.
 	return u.DB.QueryRowContext(ctx, query, args...).Scan(&user.ID, &user.CreatedAt, &user.Version)
+}
+
+func (u UserModel) GetAll(firstName string, lastName string, email string, filters data.Filters) ([]*User, data.Metadata, error) {
+	// Construct the SQL query to retrieve all movie records.
+	query := fmt.Sprintf(`SELECT count(*) OVER(), id, createdAt, firstName, lastName, email, hashedPassword, dob, version FROM users
+	WHERE (to_tsvector('simple', firstName) @@ plainto_tsquery('simple', $1) OR $1 = '')
+	AND (to_tsvector('simple', lastName) @@ plainto_tsquery('simple', $2) OR $2 = '')
+	AND (to_tsvector('simple', email) @@ plainto_tsquery('simple', $3) OR $3 = '')
+	ORDER BY %s %s, createdAt DESC
+	LIMIT $4 OFFSET $5`, filters.SortColumn(), filters.SortDirection())
+	// Create a context with a 3-second timeout.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// As our SQL query now has quite a few placeholder parameters, let's collect the
+	// values for the placeholders in a slice. Notice here how we call the limit() and
+	// offset() methods on the Filters struct to get the appropriate values for the
+	// LIMIT and OFFSET clauses.
+	args := []any{firstName, lastName, email, filters.Limit(), filters.Offset()}
+
+	// Use QueryContext() to execute the query. This returns a sql.Rows resultset
+	// containing the result.
+	rows, err := u.DB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, data.Metadata{}, err
+	}
+	// Importantly, defer a call to rows.Close() to ensure that the resultset is closed
+	// before GetAll() returns.
+	defer rows.Close()
+	// Initialize an empty slice to hold the movie data.
+	totalRecords := 0
+	users := []*User{}
+	// Use rows.Next to iterate through the rows in the resultset.
+	for rows.Next() {
+		// Initialize an empty Movie struct to hold the data for an individual movie.
+		var user User
+		// Scan the values from the row into the Movie struct. Again, note that we're
+		// using the pq.Array() adapter on the genres field here.
+		err := rows.Scan(
+			&totalRecords,
+			&user.ID,
+			&user.CreatedAt,
+			&user.FirstName,
+			&user.LastName,
+			&user.Email,
+			&user.HashedPassword,
+			&user.DOB,
+			&user.Version,
+		)
+		if err != nil {
+			return nil, data.Metadata{}, err
+		}
+		// Add the Movie struct to the slice.
+		users = append(users, &user)
+	}
+	// When the rows.Next() loop has finished, call rows.Err() to retrieve any error
+	// that was encountered during the iteration.
+	if err = rows.Err(); err != nil {
+		return nil, data.Metadata{}, err
+	}
+
+	// Generate a Metadata struct, passing in the total record count and pagination
+	// parameters from the client.
+	metadata := data.CalculateMetadata(totalRecords, filters.Page, filters.PageSize)
+
+	// If everything went OK, then return the slice of movies.
+	return users, metadata, nil
 }
 
 func (u UserModel) Get(id uuid.UUID) (*User, error) {
