@@ -1,0 +1,75 @@
+[
+    {
+        "firstName": "Patrick",
+        "lastName": "Bateman",
+        "email": "bateman@gmail.com",
+        "password": "pat",
+        "dob": "1990-01-01T00:00:00Z"
+    },
+    {
+        "firstName": "Tony",
+        "lastName": "Montana",
+        "email": "montana@gmail.com",
+        "password": "scarface",
+        "dob": "2001-12-01T00:00:00Z"
+    },
+    {
+        "firstName": "Tony",
+        "lastName": "Stark",
+        "email": "stark@gmail.com",
+        "password": "ironman",
+        "dob": "1985-07-09T00:00:00Z"
+    },
+    {
+        "firstName": "Vito",
+        "lastName": "Corleone",
+        "email": "vito@gmail.com",
+        "password": "godfather",
+        "dob": "1970-04-20T00:00:00Z"
+    },
+    {
+        "id": "b3900b01-bf05-44cb-9a2e-505601633b0e",
+        "firstName": "Anakin",
+        "lastName": "Skywalker",
+        "email": "darth_vader@gmail.com",
+        "password": "skywalker",
+        "dob": "1994-03-10T00:00:00Z"
+    },
+    {
+        "id": "b340e5f2-1da3-4234-bfbc-ab1e8ad9ac9a",
+        "firstName": "Giorno",
+        "lastName": "Giovanna",
+        "email": "golden_exp@gmail.com",
+        "password": "requiem",
+        "dob": "2003-11-09T00:00:00Z"
+    },
+    {
+        "id": "b7651560-3bca-426c-b769-7598d16a12c4",
+        "firstName": "Marty",
+        "lastName": "McFly",
+        "email": "mcfly@gmail.com",
+        "password": "mcfly",
+        "dob": "2001-03-09T00:00:00Z"
+    },
+    {
+        "firstName": "Ragnar",
+        "lastName": "Lothbrok",
+        "email": "viking@gmail.com",
+        "password": "viking",
+        "dob": "1993-08-12T00:00:00Z"
+    },
+    {
+        "firstName": "Ivar",
+        "lastName": "The Boneless",
+        "email": "boneless@gmail.com",
+        "password": "theboneless",
+        "dob": "2002-09-13T00:00:00Z"
+    },
+    {
+        "firstName": "Bruce",
+        "lastName": "Wayne",
+        "email": "batman@gmail.com",
+        "password": "gotham",
+        "dob": "1989-02-21T00:00:00Z"
+    }
+]
