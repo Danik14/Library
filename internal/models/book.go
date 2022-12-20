@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"database/sql"
 	"time"
 
@@ -26,8 +27,23 @@ type BookModel struct {
 	DB *sql.DB
 }
 
-func (m BookModel) Insert(movie *Book) error {
-	return nil
+func (u BookModel) Insert(book *Book) error {
+	// return &User{CreatedAt: time.Now(), FirstName: firstName, LastName: lastName, Email: email, HashedPassword: password, DOB: dob, Version: version}, nil
+	// Define the SQL query for inserting a new record in the movies table and returning
+	// the system-generated data.
+	query := `INSERT INTO books (title, author, year, pages, genres) VALUES ($1, $2, $3, $4, $5) RETURNING id, createdAt, version;`
+	// Create an args slice containing the values for the placeholder parameters from
+	// the movie struct. Declaring this slice immediately next to our SQL query helps to
+	// make it nice and clear *what values are being used where* in the query.
+
+	args := []any{book.Title, book.Author, book.Year, book.Pages, book.Genres}
+
+	// Create a context with a 3-second timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// Use QueryRowContext() and pass the context as the first argument.
+	return u.DB.QueryRowContext(ctx, query, args...).Scan(&book.ID, &book.CreatedAt, &book.Version)
 }
 
 func (m BookModel) Get(id int64) (*Book, error) {
