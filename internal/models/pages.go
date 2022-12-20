@@ -7,8 +7,6 @@ import (
 	"strings"
 )
 
-// Declare a custom Runtime type, which has the underlying type int32 (the same as our
-// Movie struct field).
 type Pages uint32
 
 // Define an error that our UnmarshalJSON() method can return if we're unable to parse // or convert the JSON string successfully.
@@ -32,7 +30,7 @@ func (r Pages) MarshalJSON() ([]byte, error) {
 // receiver (our Runtime type), we must use a pointer receiver for this to work
 // correctly. Otherwise, we will only be modifying a copy (which is then discarded when
 // this method returns).
-func (r *Pages) UnmarshalJSON(jsonValue []byte) error {
+func (p *Pages) UnmarshalJSON(jsonValue []byte) error {
 	// We expect that the incoming JSON value will be a string in the format
 	// "<runtime> mins", and the first thing we need to do is remove the surrounding
 	// double-quotes from this string. If we can't unquote it, then we return the
@@ -57,6 +55,6 @@ func (r *Pages) UnmarshalJSON(jsonValue []byte) error {
 	// Convert the int32 to a Runtime type and assign this to the receiver. Note that we
 	// use the * operator to deference the receiver (which is a pointer to a Runtime
 	// type) in order to set the underlying value of the pointer.
-	*r = Pages(i)
+	*p = Pages(i)
 	return nil
 }

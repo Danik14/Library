@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Danik14/library/internal/validator"
+	"github.com/lib/pq"
 )
 
 type Book struct {
@@ -19,8 +20,8 @@ type Book struct {
 	Version   int32     `json:"version"`
 }
 
-func NewBook(title string, author string, year uint32, pages uint32, genres []string) (*Book, error) {
-	return &Book{CreatedAt: time.Now(), Title: title, Author: author, Year: year, Pages: Pages(pages), Genres: genres}, nil
+func NewBook(title string, author string, year uint32, pages Pages, genres []string) (*Book, error) {
+	return &Book{CreatedAt: time.Now(), Title: title, Author: author, Year: year, Pages: pages, Genres: genres}, nil
 }
 
 type BookModel struct {
@@ -31,12 +32,12 @@ func (u BookModel) Insert(book *Book) error {
 	// return &User{CreatedAt: time.Now(), FirstName: firstName, LastName: lastName, Email: email, HashedPassword: password, DOB: dob, Version: version}, nil
 	// Define the SQL query for inserting a new record in the movies table and returning
 	// the system-generated data.
-	query := `INSERT INTO books (title, author, year, pages, genres) VALUES ($1, $2, $3, $4, $5) RETURNING id, createdAt, version;`
+	query := `INSERT INTO books (title, author, year, pages, genres) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at, version;`
 	// Create an args slice containing the values for the placeholder parameters from
 	// the movie struct. Declaring this slice immediately next to our SQL query helps to
 	// make it nice and clear *what values are being used where* in the query.
 
-	args := []any{book.Title, book.Author, book.Year, book.Pages, book.Genres}
+	args := []any{book.Title, book.Author, book.Year, book.Pages, pq.Array(book.Genres)}
 
 	// Create a context with a 3-second timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

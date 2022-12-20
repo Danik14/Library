@@ -1,7 +1,5 @@
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 CREATE TABLE IF NOT EXISTS users (
-    id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     createdAt TIMESTAMP NOT NULL DEFAULT NOW(),
     firstName VARCHAR(30) NOT NULL,
     lastName VARCHAR(30) NOT NULL,

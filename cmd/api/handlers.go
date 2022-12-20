@@ -42,11 +42,11 @@ func (app *application) listOneBook(w http.ResponseWriter, r *http.Request) {
 func (app *application) createBook(w http.ResponseWriter, r *http.Request) {
 
 	var input struct {
-		Title  string   `json:"title"`
-		Author string   `json:"author"`
-		Year   uint32   `json:"year"`
-		Pages  uint32   `json:"pages"`
-		Genres []string `json:"genres"`
+		Title  string       `json:"title"`
+		Author string       `json:"author"`
+		Year   uint32       `json:"year"`
+		Pages  models.Pages `json:"pages"`
+		Genres []string     `json:"genres"`
 	}
 
 	err := app.readJSON(w, r, &input)
@@ -60,6 +60,36 @@ func (app *application) createBook(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
+	}
+
+	v := validator.New()
+
+	if models.ValidateBook(v, book); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	// Call the Insert() method on our movies model, passing in a pointer to the
+	// validated movie struct. This will create a record in the database and update the
+	// movie struct with the system-generated information.
+	err = app.models.Books.Insert(book)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// When sending a HTTP response, we want to include a Location header to let the
+	// client know which URL they can find the newly-created resource at. We make an
+	// empty http.Header map and then use the Set() method to add a new Location header,
+	// interpolating the system-generated ID for our new movie in the URL.
+	headers := make(http.Header)
+	headers.Set("Location", fmt.Sprintf("/v1/books/%d", book.ID))
+
+	// Write a JSON response with a 201 Created status code, the movie data in the
+	// response body, and the Location header.
+	err = app.writeJSON(w, http.StatusCreated, envelope{"movie": book}, headers)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
 	}
 
 	fmt.Println(book)

@@ -1,5 +1,0 @@
-ALTER TABLE books  
-DROP COLUMN IF EXISTS id;
-
-ALTER TABLE books
-ADD COLUMN id bigserial PRIMARY KEY;

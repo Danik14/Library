@@ -20,9 +20,9 @@ func (app *application) routes() *httprouter.Router {
 	router.HandlerFunc(http.MethodPatch, "/user/:id", app.updateUserHandler)
 	router.HandlerFunc(http.MethodDelete, "/user/:id", app.deleteUserHandler)
 
-	router.HandlerFunc(http.MethodGet, "/book/getAll", app.listAllBooks)
-	router.HandlerFunc(http.MethodGet, "/book/getOne", app.listOneBook)
-	router.HandlerFunc(http.MethodPost, "/book/create", app.createBook)
+	router.HandlerFunc(http.MethodGet, "/books", app.listAllBooks)
+	router.HandlerFunc(http.MethodGet, "/books/:id", app.listOneBook)
+	router.HandlerFunc(http.MethodPost, "/v1/books", app.createBook)
 
 	return router
 }
