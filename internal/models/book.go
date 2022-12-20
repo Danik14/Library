@@ -1,6 +1,7 @@
 package models
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/Danik14/library/internal/validator"
@@ -19,6 +20,26 @@ type Book struct {
 
 func NewBook(title string, author string, year uint32, pages uint32, genres []string) (*Book, error) {
 	return &Book{CreatedAt: time.Now(), Title: title, Author: author, Year: year, Pages: Pages(pages), Genres: genres}, nil
+}
+
+type BookModel struct {
+	DB *sql.DB
+}
+
+func (m BookModel) Insert(movie *Book) error {
+	return nil
+}
+
+func (m BookModel) Get(id int64) (*Book, error) {
+	return nil, nil
+}
+
+func (m BookModel) Update(movie *Book) error {
+	return nil
+}
+
+func (m BookModel) Delete(id int64) error {
+	return nil
 }
 
 func ValidateBook(v *validator.Validator, book *Book) {
