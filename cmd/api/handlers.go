@@ -39,7 +39,7 @@ import (
 // 	}
 // }
 
-func (app *application) createBook(w http.ResponseWriter, r *http.Request) {
+func (app *application) createBookHandler(w http.ResponseWriter, r *http.Request) {
 
 	var input struct {
 		Title  string       `json:"title"`
@@ -56,10 +56,12 @@ func (app *application) createBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	book, err := models.NewBook(input.Title, input.Author, input.Year, input.Pages, input.Genres)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
+	book := &models.Book{
+		Title:  input.Title,
+		Author: input.Author,
+		Year:   input.Year,
+		Genres: input.Genres,
+		Pages:  input.Pages,
 	}
 
 	v := validator.New()
@@ -69,9 +71,9 @@ func (app *application) createBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Call the Insert() method on our movies model, passing in a pointer to the
-	// validated movie struct. This will create a record in the database and update the
-	// movie struct with the system-generated information.
+	// Call the Insert() method on our books model, passing in a pointer to the
+	// validated book struct. This will create a record in the database and update the
+	// book struct with the system-generated information.
 	err = app.models.Books.Insert(book)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
@@ -87,7 +89,7 @@ func (app *application) createBook(w http.ResponseWriter, r *http.Request) {
 
 	// Write a JSON response with a 201 Created status code, the movie data in the
 	// response body, and the Location header.
-	err = app.writeJSON(w, http.StatusCreated, envelope{"movie": book}, headers)
+	err = app.writeJSON(w, http.StatusCreated, envelope{"book": book}, headers)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
@@ -153,6 +155,31 @@ func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request
 	// Write a JSON response with a 201 Created status code, the movie data in the
 	// response body, and the Location header.
 	err = app.writeJSON(w, http.StatusCreated, envelope{"user": user}, headers)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) showBookHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := app.readIDParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+	// Call the Get() method to fetch the data for a specific book. We also need to
+	// use the errors.Is() function to check if it returns a data.ErrRecordNotFound
+	// error, in which case we send a 404 Not Found response to the client.
+	book, err := app.models.Books.Get(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, models.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	err = app.writeJSON(w, http.StatusOK, envelope{"book": book}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

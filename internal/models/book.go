@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/Danik14/library/internal/validator"
@@ -10,7 +11,7 @@ import (
 )
 
 type Book struct {
-	ID        int64     `json:"id"`
+	ID        uint32    `json:"id"`
 	CreatedAt time.Time `json:"-"`
 	Title     string    `json:"title"`
 	Author    string    `json:"author"`
@@ -20,15 +21,11 @@ type Book struct {
 	Version   int32     `json:"version"`
 }
 
-func NewBook(title string, author string, year uint32, pages Pages, genres []string) (*Book, error) {
-	return &Book{CreatedAt: time.Now(), Title: title, Author: author, Year: year, Pages: pages, Genres: genres}, nil
-}
-
 type BookModel struct {
 	DB *sql.DB
 }
 
-func (u BookModel) Insert(book *Book) error {
+func (b BookModel) Insert(book *Book) error {
 	// return &User{CreatedAt: time.Now(), FirstName: firstName, LastName: lastName, Email: email, HashedPassword: password, DOB: dob, Version: version}, nil
 	// Define the SQL query for inserting a new record in the movies table and returning
 	// the system-generated data.
@@ -44,11 +41,39 @@ func (u BookModel) Insert(book *Book) error {
 	defer cancel()
 
 	// Use QueryRowContext() and pass the context as the first argument.
-	return u.DB.QueryRowContext(ctx, query, args...).Scan(&book.ID, &book.CreatedAt, &book.Version)
+	return b.DB.QueryRowContext(ctx, query, args...).Scan(&book.ID, &book.CreatedAt, &book.Version)
 }
 
-func (m BookModel) Get(id int64) (*Book, error) {
-	return nil, nil
+func (b BookModel) Get(id int64) (*Book, error) {
+	if id < 1 {
+		return nil, ErrRecordNotFound
+	}
+	// Define the SQL query for retrieving the book data.
+	query := `
+SELECT id, created_at, title, year, author, pages, genres, version FROM books
+WHERE id = $1`
+	// Declare a Movie struct to hold the data returned by the query.
+	var book Book
+	// Execute the query using the QueryRow() method, passing in the provided id value
+	// as a placeholder parameter, and scan the response data into the fields of the
+	// Book struct. Importantly, notice that we need to convert the scan target for the
+	// genres column using the pq.Array() adapter function again.
+	err := b.DB.QueryRow(query, id).Scan(&book.ID,
+		&book.CreatedAt, &book.Title, &book.Year, &book.Author, &book.Pages, pq.Array(&book.Genres), &book.Version,
+	)
+	// Handle any errors. If there was no matching movie found, Scan() will return
+	// a sql.ErrNoRows error. We check for this and return our custom ErrRecordNotFound
+	// error instead.
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	// Otherwise, return a pointer to the Book struct.
+	return &book, nil
 }
 
 func (m BookModel) Update(movie *Book) error {

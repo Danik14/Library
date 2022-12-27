@@ -43,7 +43,7 @@ func (u UserModel) Insert(user *User) error {
 	// }
 	args := []any{user.FirstName, user.LastName, user.Email, user.HashedPassword, pq.FormatTimestamp(user.DOB)}
 
-	// Create a context with a 3-second timeout.// Create a context with a 3-second timeout.
+	// Create a context with a 3-second timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 

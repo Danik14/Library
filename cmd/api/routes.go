@@ -21,8 +21,8 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodDelete, "/user/:id", app.deleteUserHandler)
 
 	// router.HandlerFunc(http.MethodGet, "/books", app.listAllBooks)
-	// router.HandlerFunc(http.MethodGet, "/books/:id", app.listOneBook)
-	router.HandlerFunc(http.MethodPost, "/v1/books", app.createBook)
+	router.HandlerFunc(http.MethodGet, "/v1/book/:id", app.showBookHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/book", app.createBookHandler)
 
 	// Wrap the router with the panic recovery middleware.
 	return app.recoverPanic(app.rateLimit(router))
