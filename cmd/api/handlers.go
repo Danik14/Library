@@ -11,33 +11,33 @@ import (
 	"github.com/Danik14/library/internal/validator"
 )
 
-func (app *application) listAllBooks(w http.ResponseWriter, r *http.Request) {
-	book, err := models.NewBook("AlibaSlave", "Danik", 1964, 300, []string{"gachi"})
-	if err != nil {
-		app.logger.Fatal("Book error")
-	}
-	env := envelope{"book": book}
+// func (app *application) listAllBooks(w http.ResponseWriter, r *http.Request) {
+// 	book, err := models.NewBook("AlibaSlave", "Danik", 1964, 300, []string{"gachi"})
+// 	if err != nil {
+// 		app.logger.PrintFatal("Book error")
+// 	}
+// 	env := envelope{"book": book}
 
-	err = app.writeJSON(w, http.StatusOK, env, nil)
-	if err != nil {
-		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
-		return
-	}
-}
+// 	err = app.writeJSON(w, http.StatusOK, env, nil)
+// 	if err != nil {
+// 		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+// 		return
+// 	}
+// }
 
-func (app *application) listOneBook(w http.ResponseWriter, r *http.Request) {
-	book, err := models.NewBook("AlibaSlave", "Danik", 1964, 300, []string{"gachi"})
-	if err != nil {
-		app.logger.Fatal("User error")
-	}
-	env := envelope{"book": book}
+// func (app *application) listOneBook(w http.ResponseWriter, r *http.Request) {
+// 	book, err := models.NewBook("AlibaSlave", "Danik", 1964, 300, []string{"gachi"})
+// 	if err != nil {
+// 		app.logger.Fatal("User error")
+// 	}
+// 	env := envelope{"book": book}
 
-	err = app.writeJSON(w, http.StatusOK, env, nil)
-	if err != nil {
-		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
-		return
-	}
-}
+// 	err = app.writeJSON(w, http.StatusOK, env, nil)
+// 	if err != nil {
+// 		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+// 		return
+// 	}
+// }
 
 func (app *application) createBook(w http.ResponseWriter, r *http.Request) {
 

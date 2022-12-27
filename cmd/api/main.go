@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Danik14/library/internal/jsonlog"
 	"github.com/Danik14/library/internal/models"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -31,7 +32,7 @@ type config struct {
 
 type application struct {
 	config config
-	logger *log.Logger
+	logger *jsonlog.Logger
 	models models.Models
 }
 
@@ -47,11 +48,11 @@ func main() {
 	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL max connection idle time")
 	flag.Parse()
 
-	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime|log.LstdFlags|log.Lshortfile)
+	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 
 	err := godotenv.Load()
 	if err != nil {
-		logger.Panic("Error loading .env file")
+		logger.PrintError(err, nil)
 	}
 
 	cfg.db.dsn = os.Getenv("DB-DSN") //in file .env: DB-DSN="postgres://user:password@localhost/dbName?sslmode=disable"
@@ -59,14 +60,14 @@ func main() {
 	db, err := openDB(cfg)
 	if err != nil {
 		fmt.Println(1)
-		logger.Fatal(err)
+		logger.PrintFatal(err, nil)
 	}
 	// Defer a call to db.Close() so that the connection pool is closed before the
 	// main() function exits.
 	defer db.Close()
 	// Also log a message to say that the connection pool has been successfully
 	// established.
-	logger.Printf("database connection pool established")
+	logger.PrintInfo("database connection pool established", nil)
 
 	app := &application{
 		config: cfg,
@@ -77,12 +78,16 @@ func main() {
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", os.Getenv("PORT")), //cfg.port),
 		Handler:      app.routes(),
+		ErrorLog:     log.New(logger, "", 0),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
 
-	logger.Printf("Starting server on port: %s \n", srv.Addr)
+	logger.PrintInfo("Starting server on port: %s \n", map[string]string{
+		"addr": srv.Addr,
+		// "env": cfg.Env,
+	})
 
 	// Initializing the server in a goroutine so that
 	// it won't block the graceful shutdown handling below
