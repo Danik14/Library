@@ -88,11 +88,37 @@ RETURNING version`
 		book.Year, book.Pages, pq.Array(book.Genres), book.ID,
 	}
 	// Use the QueryRow() method to execute the query, passing in the args slice as a
-	// variadic parameter and scanning the new version value into the movie struct.
+	// variadic parameter and scanning the new version value into the book struct.
 	return b.DB.QueryRow(query, args...).Scan(&book.Version)
 }
 
-func (m BookModel) Delete(id int64) error {
+func (b BookModel) Delete(id int64) error {
+	// Return an ErrRecordNotFound error if the movie ID is less than 1.
+	if id < 1 {
+		return ErrRecordNotFound
+	}
+	// Construct the SQL query to delete the record.
+	query := `
+DELETE FROM books WHERE id = $1`
+	// Execute the SQL query using the Exec() method, passing in the id variable as
+	// the value for the placeholder parameter. The Exec() method returns a sql.Result
+	// object.
+	result, err := b.DB.Exec(query, id)
+	if err != nil {
+		return err
+	}
+	// Call the RowsAffected() method on the sql.Result object to get the number of rows
+	// affected by the query.
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	// If no rows were affected, we know that the books table didn't contain a record
+	// with the provided ID at the moment we tried to delete it. In that case we
+	// return an ErrRecordNotFound error.
+	if rowsAffected == 0 {
+		return ErrRecordNotFound
+	}
 	return nil
 }
 

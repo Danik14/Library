@@ -207,11 +207,11 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 
 	// Declare an input struct to hold the expected data from the client.
 	var input struct {
-		Title  string       `json:"title"`
-		Author string       `json:"author"`
-		Year   int32        `json:"year"`
-		Pages  models.Pages `json:"pages"`
-		Genres []string     `json:"genres"`
+		Title  *string       `json:"title"`
+		Author *string       `json:"author"`
+		Year   *int32        `json:"year"`
+		Pages  *models.Pages `json:"pages"`
+		Genres []string      `json:"genres"`
 	}
 
 	err = app.readJSON(w, r, &input)
@@ -219,13 +219,29 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		app.badRequestResponse(w, r, err)
 		return
 	}
-	// Copy the values from the request body to the appropriate fields of the movie
-	// record.
-	book.Title = input.Title
-	book.Author = input.Author
-	book.Year = input.Year
-	book.Pages = input.Pages
-	book.Genres = input.Genres
+
+	// If the input.Title value is nil then we know that no corresponding "title" key/
+	// value pair was provided in the JSON request body. So we move on and leave the
+	// movie record unchanged. Otherwise, we update the movie record with the new title
+	// value. Importantly, because input.Title is a now a pointer to a string, we need
+	// to dereference the pointer using the * operator to get the underlying value
+	// before assigning it to our movie record.
+	if input.Title != nil {
+		book.Title = *input.Title
+	}
+	if input.Author != nil {
+		book.Author = *input.Author
+	}
+	if input.Year != nil {
+		book.Year = *input.Year
+	}
+	if input.Pages != nil {
+		book.Pages = *input.Pages
+	}
+	if input.Genres != nil {
+		book.Genres = input.Genres
+	}
+
 	// Validate the updated movie record, sending the client a 422 Unprocessable Entity
 	// response if any checks fail.
 	v := validator.New()
@@ -241,6 +257,32 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 	// Write the updated movie record in a JSON response.
 	err = app.writeJSON(w, http.StatusOK, envelope{"book": book}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Request) {
+	// Extract the movie ID from the URL.
+	id, err := app.readIDParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+	// Delete the movie from the database, sending a 404 Not Found response to the
+	// client if there isn't a matching record.
+	err = app.models.Books.Delete(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, models.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// Return a 200 OK status code along with a success message.
+	err = app.writeJSON(w, http.StatusOK, envelope{"message": "book successfully deleted"}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
