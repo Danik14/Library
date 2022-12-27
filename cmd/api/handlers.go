@@ -44,7 +44,7 @@ func (app *application) createBookHandler(w http.ResponseWriter, r *http.Request
 	var input struct {
 		Title  string       `json:"title"`
 		Author string       `json:"author"`
-		Year   uint32       `json:"year"`
+		Year   int32        `json:"year"`
 		Pages  models.Pages `json:"pages"`
 		Genres []string     `json:"genres"`
 	}
@@ -179,6 +179,67 @@ func (app *application) showBookHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
+	err = app.writeJSON(w, http.StatusOK, envelope{"book": book}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Request) {
+	// Extract the movie ID from the URL.
+	id, err := app.readIDParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+	// Fetch the existing movie record from the database, sending a 404 Not Found
+	// response to the client if we couldn't find a matching record.
+	book, err := app.models.Books.Get(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, models.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	// Declare an input struct to hold the expected data from the client.
+	var input struct {
+		Title  string       `json:"title"`
+		Author string       `json:"author"`
+		Year   int32        `json:"year"`
+		Pages  models.Pages `json:"pages"`
+		Genres []string     `json:"genres"`
+	}
+
+	err = app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// Copy the values from the request body to the appropriate fields of the movie
+	// record.
+	book.Title = input.Title
+	book.Author = input.Author
+	book.Year = input.Year
+	book.Pages = input.Pages
+	book.Genres = input.Genres
+	// Validate the updated movie record, sending the client a 422 Unprocessable Entity
+	// response if any checks fail.
+	v := validator.New()
+	if models.ValidateBook(v, book); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// Pass the updated movie record to our new Update() method.
+	err = app.models.Books.Update(book)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	// Write the updated movie record in a JSON response.
 	err = app.writeJSON(w, http.StatusOK, envelope{"book": book}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)

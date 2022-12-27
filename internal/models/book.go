@@ -11,11 +11,11 @@ import (
 )
 
 type Book struct {
-	ID        uint32    `json:"id"`
+	ID        int32     `json:"id"`
 	CreatedAt time.Time `json:"-"`
 	Title     string    `json:"title"`
 	Author    string    `json:"author"`
-	Year      uint32    `json:"year,omitempty"`
+	Year      int32     `json:"year,omitempty"`
 	Pages     Pages     `json:"pages,omitempty"`
 	Genres    []string  `json:"genres,omitempty"`
 	Version   int32     `json:"version"`
@@ -76,8 +76,20 @@ WHERE id = $1`
 	return &book, nil
 }
 
-func (m BookModel) Update(movie *Book) error {
-	return nil
+func (b BookModel) Update(book *Book) error {
+	// Declare the SQL query for updating the record and returning the new version
+	// number.
+	query := `
+UPDATE books
+SET title = $1, author = $2, year = $3, pages = $4, genres = $5, version = version + 1 WHERE id = $6
+RETURNING version`
+	// Create an args slice containing the values for the placeholder parameters.
+	args := []any{book.Title, book.Author,
+		book.Year, book.Pages, pq.Array(book.Genres), book.ID,
+	}
+	// Use the QueryRow() method to execute the query, passing in the args slice as a
+	// variadic parameter and scanning the new version value into the movie struct.
+	return b.DB.QueryRow(query, args...).Scan(&book.Version)
 }
 
 func (m BookModel) Delete(id int64) error {
