@@ -9,7 +9,7 @@ import (
 func (app *application) routes() http.Handler {
 	router := httprouter.New()
 
-	// router.MethodNotAllowedHandler = http.HandlerFunc(app.methodNotAllowedResponse)
+	router.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
 
 	// router.HandlerFunc(http.MethodGet, "/", app.listAllBooks)
 
