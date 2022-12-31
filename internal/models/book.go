@@ -81,15 +81,28 @@ func (b BookModel) Update(book *Book) error {
 	// number.
 	query := `
 UPDATE books
-SET title = $1, author = $2, year = $3, pages = $4, genres = $5, version = version + 1 WHERE id = $6
+SET title = $1, author = $2, year = $3, pages = $4, genres = $5, version = version + 1
+WHERE id = $6 AND version = $6
 RETURNING version`
 	// Create an args slice containing the values for the placeholder parameters.
 	args := []any{book.Title, book.Author,
-		book.Year, book.Pages, pq.Array(book.Genres), book.ID,
+		book.Year, book.Pages, pq.Array(book.Genres), book.ID, book.Version,
 	}
-	// Use the QueryRow() method to execute the query, passing in the args slice as a
-	// variadic parameter and scanning the new version value into the book struct.
-	return b.DB.QueryRow(query, args...).Scan(&book.Version)
+
+	// Execute the SQL query. If no matching row could be found, we know the movie
+	// version has changed (or the record has been deleted) and we return our custom
+	// ErrEditConflict error.
+	err := b.DB.QueryRow(query, args...).Scan(&book.Version)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrEditConflict
+		default:
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (b BookModel) Delete(id int64) error {
