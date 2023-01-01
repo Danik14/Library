@@ -4,14 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Danik14/library/internal/validator"
 	"github.com/lib/pq"
+	uuid "github.com/satori/go.uuid"
 )
 
 type Book struct {
-	ID        int32     `json:"id"`
+	ID        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"-"`
 	Title     string    `json:"title"`
 	Author    string    `json:"author"`
@@ -44,10 +46,7 @@ func (b BookModel) Insert(book *Book) error {
 	return b.DB.QueryRowContext(ctx, query, args...).Scan(&book.ID, &book.CreatedAt, &book.Version)
 }
 
-func (b BookModel) Get(id int64) (*Book, error) {
-	if id < 1 {
-		return nil, ErrRecordNotFound
-	}
+func (b BookModel) Get(id uuid.UUID) (*Book, error) {
 	// Define the SQL query for retrieving the book data.
 	query := `
 SELECT id, created_at, title, year, author, pages, genres, version FROM books
@@ -82,12 +81,13 @@ func (b BookModel) Update(book *Book) error {
 	query := `
 UPDATE books
 SET title = $1, author = $2, year = $3, pages = $4, genres = $5, version = version + 1
-WHERE id = $6 AND version = $6
+WHERE id = $6 AND version = $7
 RETURNING version`
 	// Create an args slice containing the values for the placeholder parameters.
 	args := []any{book.Title, book.Author,
 		book.Year, book.Pages, pq.Array(book.Genres), book.ID, book.Version,
 	}
+	fmt.Println(book)
 
 	// Execute the SQL query. If no matching row could be found, we know the movie
 	// version has changed (or the record has been deleted) and we return our custom
@@ -105,11 +105,8 @@ RETURNING version`
 	return nil
 }
 
-func (b BookModel) Delete(id int64) error {
+func (b BookModel) Delete(id uuid.UUID) error {
 	// Return an ErrRecordNotFound error if the movie ID is less than 1.
-	if id < 1 {
-		return ErrRecordNotFound
-	}
 	// Construct the SQL query to delete the record.
 	query := `
 DELETE FROM books WHERE id = $1`

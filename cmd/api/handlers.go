@@ -161,7 +161,7 @@ func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) showBookHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := app.readIDParam(r)
+	id, err := app.readUUIDParam(r)
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
@@ -187,7 +187,7 @@ func (app *application) showBookHandler(w http.ResponseWriter, r *http.Request) 
 
 func (app *application) updateBookHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract the movie ID from the URL.
-	id, err := app.readIDParam(r)
+	id, err := app.readUUIDParam(r)
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
@@ -270,7 +270,7 @@ func (app *application) updateBookHandler(w http.ResponseWriter, r *http.Request
 
 func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract the movie ID from the URL.
-	id, err := app.readIDParam(r)
+	id, err := app.readUUIDParam(r)
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return

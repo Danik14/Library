@@ -59,7 +59,7 @@ func main() {
 
 	flag.Parse()
 
-	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
+	logger := jsonlog.New(os.Stdout, jsonlog.LevelError)
 
 	err := godotenv.Load()
 	if err != nil {
