@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/Danik14/library/internal/validator"
@@ -53,11 +52,26 @@ SELECT id, created_at, title, year, author, pages, genres, version FROM books
 WHERE id = $1`
 	// Declare a Movie struct to hold the data returned by the query.
 	var book Book
+
+	// Use the context.WithTimeout() function to create a context.Context which carries a
+	// 3-second timeout deadline. Note that we're using the empty context.Background()
+	// as the 'parent' context.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+
+	// Importantly, use defer to make sure that we cancel the context before the Get()
+	// method returns.
+	// The defer cancel() line is necessary because it ensures that the resources
+	// associated with our context will always be released before the Get() method returns,
+	// thereby preventing a memory leak. Without it, the resources won’t be released until
+	// either the 3- second timeout is hit or the parent context
+	// (which in this specific example is context.Background()) is canceled.
+	defer cancel()
+
 	// Execute the query using the QueryRow() method, passing in the provided id value
 	// as a placeholder parameter, and scan the response data into the fields of the
 	// Book struct. Importantly, notice that we need to convert the scan target for the
 	// genres column using the pq.Array() adapter function again.
-	err := b.DB.QueryRow(query, id).Scan(&book.ID,
+	err := b.DB.QueryRowContext(ctx, query, id).Scan(&book.ID,
 		&book.CreatedAt, &book.Title, &book.Year, &book.Author, &book.Pages, pq.Array(&book.Genres), &book.Version,
 	)
 	// Handle any errors. If there was no matching movie found, Scan() will return
@@ -87,12 +101,14 @@ RETURNING version`
 	args := []any{book.Title, book.Author,
 		book.Year, book.Pages, pq.Array(book.Genres), book.ID, book.Version,
 	}
-	fmt.Println(book)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 
 	// Execute the SQL query. If no matching row could be found, we know the movie
 	// version has changed (or the record has been deleted) and we return our custom
 	// ErrEditConflict error.
-	err := b.DB.QueryRow(query, args...).Scan(&book.Version)
+	err := b.DB.QueryRowContext(ctx, query, args...).Scan(&book.Version)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -113,7 +129,11 @@ DELETE FROM books WHERE id = $1`
 	// Execute the SQL query using the Exec() method, passing in the id variable as
 	// the value for the placeholder parameter. The Exec() method returns a sql.Result
 	// object.
-	result, err := b.DB.Exec(query, id)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result, err := b.DB.ExecContext(ctx, query, id)
 	if err != nil {
 		return err
 	}
