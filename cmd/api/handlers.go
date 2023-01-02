@@ -222,8 +222,18 @@ func (app *application) listBooksHandler(w http.ResponseWriter, r *http.Request)
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
-	// Dump the contents of the input struct in a HTTP response.
-	fmt.Fprintf(w, "%+v\n", input)
+	// Call the GetAll() method to retrieve the books, passing in the various filter
+	// parameters.
+	books, err := app.models.Books.GetAll(input.Title, input.Author, input.Genres, input.Filters)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	// Send a JSON response containing the movie data.
+	err = app.writeJSON(w, http.StatusOK, envelope{"books": books}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 }
 
 func (app *application) updateBookHandler(w http.ResponseWriter, r *http.Request) {

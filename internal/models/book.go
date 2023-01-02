@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Danik14/library/internal/data"
 	"github.com/Danik14/library/internal/validator"
 	"github.com/lib/pq"
 	uuid "github.com/satori/go.uuid"
@@ -87,6 +88,59 @@ WHERE id = $1`
 	}
 	// Otherwise, return a pointer to the Book struct.
 	return &book, nil
+}
+
+// Create a new GetAll() method which returns a slice of books. Although we're not
+// using them right now, we've set this up to accept the various filter parameters as
+// arguments.
+func (m BookModel) GetAll(title string, author string, genres []string, filters data.Filters) ([]*Book, error) {
+	// Construct the SQL query to retrieve all book records.
+	query := `
+SELECT id, created_at, title, author, year, pages, genres, version FROM books
+ORDER BY id`
+	// Create a context with a 3-second timeout.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	// Use QueryContext() to execute the query. This returns a sql.Rows resultset
+	// containing the result.
+	rows, err := m.DB.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	// Importantly, defer a call to rows.Close() to ensure that the resultset is closed
+	// before GetAll() returns.
+	defer rows.Close()
+	// Initialize an empty slice to hold the book data.
+	books := []*Book{}
+	// Use rows.Next to iterate through the rows in the resultset.
+	for rows.Next() {
+		// Initialize an empty Book struct to hold the data for an individual book.
+		var book Book
+		// Scan the values from the row into the Book struct. Again, note that we're
+		// using the pq.Array() adapter on the genres field here.
+		err := rows.Scan(
+			&book.ID,
+			&book.CreatedAt,
+			&book.Title,
+			&book.Author,
+			&book.Year,
+			&book.Pages,
+			pq.Array(&book.Genres),
+			&book.Version,
+		)
+		if err != nil {
+			return nil, err
+		}
+		// Add the Book struct to the slice.
+		books = append(books, &book)
+	}
+	// When the rows.Next() loop has finished, call rows.Err() to retrieve any error
+	// that was encountered during the iteration.
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	// If everything went OK, then return the slice of books.
+	return books, nil
 }
 
 func (b BookModel) Update(book *Book) error {
