@@ -97,16 +97,19 @@ func (m BookModel) GetAll(title string, author string, genres []string, filters 
 	// Construct the SQL query to retrieve all book records.
 	query := `
 SELECT id, created_at, title, author, year, pages, genres, version FROM books
+WHERE (to_tsvector('simple', title) @@ plainto_tsquery('simple', $1) OR $1 = '')
+AND (to_tsvector('simple', author) @@ plainto_tsquery('simple', $2) OR $2 = '')
+AND (genres @> $3 OR $3 = '{}')
 ORDER BY id`
 	// Create a context with a 3-second timeout.
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	// Use QueryContext() to execute the query. This returns a sql.Rows resultset
-	// containing the result.
-	rows, err := m.DB.QueryContext(ctx, query)
+	// Pass the title and genres as the placeholder parameter values.
+	rows, err := m.DB.QueryContext(ctx, query, title, author, pq.Array(genres))
 	if err != nil {
 		return nil, err
 	}
+
 	// Importantly, defer a call to rows.Close() to ensure that the resultset is closed
 	// before GetAll() returns.
 	defer rows.Close()
