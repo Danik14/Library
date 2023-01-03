@@ -182,30 +182,39 @@ func (app *application) createBookHandler(w http.ResponseWriter, r *http.Request
 // 	}
 // }
 
-// func (app *application) showBookHandler(w http.ResponseWriter, r *http.Request) {
-// 	id, err := app.readUUIDParam(r)
-// 	if err != nil {
-// 		app.notFoundResponse(w, r)
-// 		return
-// 	}
-// 	// Call the Get() method to fetch the data for a specific book. We also need to
-// 	// use the errors.Is() function to check if it returns a data.ErrRecordNotFound
-// 	// error, in which case we send a 404 Not Found response to the client.
-// 	book, err := app.models.Books.Get(id)
-// 	if err != nil {
-// 		switch {
-// 		case errors.Is(err, models.ErrRecordNotFound):
-// 			app.notFoundResponse(w, r)
-// 		default:
-// 			app.serverErrorResponse(w, r, err)
-// 		}
-// 		return
-// 	}
-// 	err = app.writeJSON(w, http.StatusOK, envelope{"book": book}, nil)
-// 	if err != nil {
-// 		app.serverErrorResponse(w, r, err)
-// 	}
-// }
+func (app *application) showBookHandler(w http.ResponseWriter, r *http.Request) {
+	objectId, err := app.readPrimitiveObjectIdParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+	// Call the Get() method to fetch the data for a specific book. We also need to
+	// use the errors.Is() function to check if it returns a data.ErrRecordNotFound
+	// error, in which case we send a 404 Not Found response to the client.
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
+	defer cancel()
+
+	cursor, err := app.models.Books.DB.Find(ctx, bson.M{"_id": objectId})
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		app.logError(r, err)
+		return
+	}
+
+	books := []models.Book{}
+
+	err = cursor.All(ctx, &books)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		app.logError(r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"book": books}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
 
 func (app *application) listBooksHandler(w http.ResponseWriter, r *http.Request) {
 	// To keep things consistent with our other handlers, we'll define an input struct
