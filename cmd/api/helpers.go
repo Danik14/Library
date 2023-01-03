@@ -14,6 +14,7 @@ import (
 	"github.com/Danik14/library/internal/validator"
 	"github.com/julienschmidt/httprouter"
 	uuid "github.com/satori/go.uuid"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type envelope map[string]any
@@ -34,6 +35,15 @@ func (app *application) readUUIDParam(r *http.Request) (uuid.UUID, error) {
 		return uuid.Nil, errors.New("invalid id parameter")
 	}
 	return id, nil
+}
+
+func (app *application) readPrimitiveObjectIdParam(r *http.Request) (primitive.ObjectID, error) {
+	params := httprouter.ParamsFromContext(r.Context())
+	objectId, err := primitive.ObjectIDFromHex(params.ByName("id"))
+	if err != nil {
+		return primitive.NilObjectID, errors.New("invalid id parameter")
+	}
+	return objectId, nil
 }
 
 func (app *application) writeJSON(w http.ResponseWriter, status int, data envelope, headers http.Header) error {

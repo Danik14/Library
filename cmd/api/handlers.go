@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Danik14/library/internal/data"
 	"github.com/Danik14/library/internal/models"
 	"github.com/Danik14/library/internal/validator"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -26,16 +28,27 @@ import (
 // }
 
 // func (app *application) listOneBook(w http.ResponseWriter, r *http.Request) {
-// 	book, err := models.NewBook("AlibaSlave", "Danik", 1964, 300, []string{"gachi"})
+// 	id, err := app.readPrimitiveObjectIdParam(r)
 // 	if err != nil {
-// 		app.logger.Fatal("User error")
-// 	}
-// 	env := envelope{"book": book}
-
-// 	err = app.writeJSON(w, http.StatusOK, env, nil)
-// 	if err != nil {
-// 		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+// 		app.notFoundResponse(w, r)
+// 		app.logError(r, err)
 // 		return
+// 	}
+
+// 	user, err := app.models.Users.Get(id)
+// 	if err != nil {
+// 		switch {
+// 		case errors.Is(err, models.ErrRecordNotFound):
+// 			app.notFoundResponse(w, r)
+// 		default:
+// 			app.serverErrorResponse(w, r, err)
+// 		}
+// 		return
+// 	}
+
+// 	err = app.writeJSON(w, http.StatusOK, envelope{"user": user}, nil)
+// 	if err != nil {
+// 		app.serverErrorResponse(w, r, err)
 // 	}
 // }
 
@@ -194,56 +207,75 @@ func (app *application) createBookHandler(w http.ResponseWriter, r *http.Request
 // 	}
 // }
 
-// func (app *application) listBooksHandler(w http.ResponseWriter, r *http.Request) {
-// 	// To keep things consistent with our other handlers, we'll define an input struct
-// 	// to hold the expected values from the request query string.
-// 	var input struct {
-// 		Title  string
-// 		Author string
-// 		// Year     int
-// 		Genres []string
-// 		data.Filters
-// 	}
-// 	// Initialize a new Validator instance.
-// 	v := validator.New()
-// 	// Call r.URL.Query() to get the url.Values map containing the query string data.
-// 	qs := r.URL.Query()
-// 	// Use our helpers to extract the title and genres query string values, falling back
-// 	// to defaults of an empty string and an empty slice respectively if they are not
-// 	// provided by the client.
-// 	input.Title = app.readString(qs, "title", "")
-// 	input.Author = app.readString(qs, "author", "")
-// 	// input.Year = app.readInt(qs, "year", 0, v)
-// 	input.Genres = app.readCSV(qs, "genres", []string{})
-// 	// Get the page and page_size query string values as integers. Notice that we set
-// 	// the default page value to 1 and default page_size to 20, and that we pass the
-// 	// validator instance as the final argument here.
-// 	input.Filters.Page = app.readInt(qs, "page", 1, v)
-// 	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
-// 	// Extract the sort query string value, falling back to "id" if it is not provided
-// 	// by the client (which will imply a ascending sort on movie ID).
-// 	input.Filters.Sort = app.readString(qs, "sort", "id")
-// 	input.Filters.SortSafelist = []string{"id", "title", "author", "year", "runtime", "-id", "-title", "-author", "-year", "-runtime"}
+func (app *application) listBooksHandler(w http.ResponseWriter, r *http.Request) {
+	// To keep things consistent with our other handlers, we'll define an input struct
+	// to hold the expected values from the request query string.
+	var input struct {
+		Title  string
+		Author string
+		// Year     int
+		Genres []string
+		data.Filters
+	}
+	// Initialize a new Validator instance.
+	v := validator.New()
+	// Call r.URL.Query() to get the url.Values map containing the query string data.
+	qs := r.URL.Query()
+	// Use our helpers to extract the title and genres query string values, falling back
+	// to defaults of an empty string and an empty slice respectively if they are not
+	// provided by the client.
+	input.Title = app.readString(qs, "title", "")
+	input.Author = app.readString(qs, "author", "")
+	// input.Year = app.readInt(qs, "year", 0, v)
+	input.Genres = app.readCSV(qs, "genres", []string{})
+	// Get the page and page_size query string values as integers. Notice that we set
+	// the default page value to 1 and default page_size to 20, and that we pass the
+	// validator instance as the final argument here.
+	input.Filters.Page = app.readInt(qs, "page", 1, v)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
+	// Extract the sort query string value, falling back to "id" if it is not provided
+	// by the client (which will imply a ascending sort on movie ID).
+	input.Filters.Sort = app.readString(qs, "sort", "id")
+	input.Filters.SortSafelist = []string{"id", "title", "author", "year", "runtime", "-id", "-title", "-author", "-year", "-runtime"}
 
-// 	// Check the Validator instance for any errors and use the failedValidationResponse()
-// 	// helper to send the client a response if necessary.
-// 	if data.ValidateFilters(v, input.Filters); !v.Valid() {
-// 		app.failedValidationResponse(w, r, v.Errors)
-// 		return
-// 	}
-// 	// Call the GetAll() method to retrieve the books, passing in the various filter
-// 	// parameters.
-// 	books, err := app.models.Books.GetAll(input.Title, input.Author, input.Genres, input.Filters)
-// 	if err != nil {
-// 		app.serverErrorResponse(w, r, err)
-// 		return
-// 	}
-// 	// Send a JSON response containing the movie data.
-// 	err = app.writeJSON(w, http.StatusOK, envelope{"books": books}, nil)
-// 	if err != nil {
-// 		app.serverErrorResponse(w, r, err)
-// 	}
-// }
+	// Check the Validator instance for any errors and use the failedValidationResponse()
+	// helper to send the client a response if necessary.
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+	defer cancel()
+
+	searchquerydb, err := app.models.Books.DB.Find(ctx, bson.M{})
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	books := []models.Book{}
+	err = searchquerydb.All(ctx, &books)
+	if err != nil {
+		app.logError(r, err)
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	defer searchquerydb.Close(ctx)
+
+	// // Call the GetAll() method to retrieve the books, passing in the various filter
+	// // parameters.
+	// books, err := app.models.Books.GetAll(input.Title, input.Author, input.Genres, input.Filters)
+	// if err != nil {
+	// 	app.serverErrorResponse(w, r, err)
+	// 	return
+	// }
+	// Send a JSON response containing the movie data.
+	err = app.writeJSON(w, http.StatusOK, envelope{"books": books}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
 
 // func (app *application) updateBookHandler(w http.ResponseWriter, r *http.Request) {
 // 	// Extract the movie ID from the URL.
