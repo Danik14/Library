@@ -1,8 +1,9 @@
 package models
 
 import (
-	"database/sql"
 	"errors"
+
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Define a custom ErrRecordNotFound error. We'll return this from our Get() method when
@@ -21,9 +22,9 @@ type Models struct {
 
 // For ease of use, we also add a New() method which returns a Models struct containing
 // the initialized MovieModel.
-func NewModels(db *sql.DB) Models {
+func NewModels(users *mongo.Collection, books *mongo.Collection) Models {
 	return Models{
-		Users: UserModel{DB: db},
-		Books: BookModel{DB: db},
+		Users: UserModel{DB: users},
+		Books: BookModel{DB: books},
 	}
 }
