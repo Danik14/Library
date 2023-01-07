@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Danik14/library/internal/data"
@@ -93,27 +94,32 @@ WHERE id = $1`
 // Create a new GetAll() method which returns a slice of books. Although we're not
 // using them right now, we've set this up to accept the various filter parameters as
 // arguments.
-func (m BookModel) GetAll(title string, author string, genres []string, filters data.Filters) ([]*Book, error) {
+func (m BookModel) GetAll(title string, author string, genres []string, filters data.Filters) ([]*Book, data.Metadata, error) {
 	// Construct the SQL query to retrieve all book records.
-	query := `
-SELECT id, created_at, title, author, year, pages, genres, version FROM books
+	query := fmt.Sprintf(`
+SELECT count(*) OVER(), id, created_at, title, author, year, pages, genres, version FROM books
 WHERE (to_tsvector('simple', title) @@ plainto_tsquery('simple', $1) OR $1 = '')
 AND (to_tsvector('simple', author) @@ plainto_tsquery('simple', $2) OR $2 = '')
 AND (genres @> $3 OR $3 = '{}')
-ORDER BY id`
+ORDER BY %s %s, id ASC,
+LIMIT $3 OFFSET $4`, filters.SortColumn(), filters.SortDirection())
 	// Create a context with a 3-second timeout.
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
+
+	args := []any{title, author, pq.Array(genres), filters.Limit(), filters.Offset()}
+
 	// Pass the title and genres as the placeholder parameter values.
-	rows, err := m.DB.QueryContext(ctx, query, title, author, pq.Array(genres))
+	rows, err := m.DB.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, data.Metadata{}, err
 	}
 
 	// Importantly, defer a call to rows.Close() to ensure that the resultset is closed
 	// before GetAll() returns.
 	defer rows.Close()
-	// Initialize an empty slice to hold the book data.
+
+	totalRecords := 0
 	books := []*Book{}
 	// Use rows.Next to iterate through the rows in the resultset.
 	for rows.Next() {
@@ -122,6 +128,7 @@ ORDER BY id`
 		// Scan the values from the row into the Book struct. Again, note that we're
 		// using the pq.Array() adapter on the genres field here.
 		err := rows.Scan(
+			&totalRecords,
 			&book.ID,
 			&book.CreatedAt,
 			&book.Title,
@@ -132,7 +139,7 @@ ORDER BY id`
 			&book.Version,
 		)
 		if err != nil {
-			return nil, err
+			return nil, data.Metadata{}, err
 		}
 		// Add the Book struct to the slice.
 		books = append(books, &book)
@@ -140,10 +147,15 @@ ORDER BY id`
 	// When the rows.Next() loop has finished, call rows.Err() to retrieve any error
 	// that was encountered during the iteration.
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, data.Metadata{}, err
 	}
+
+	// Generate a Metadata struct, passing in the total record count and pagination
+	// parameters from the client.
+	metadata := data.CalculateMetadata(totalRecords, filters.Page, filters.PageSize)
+
 	// If everything went OK, then return the slice of books.
-	return books, nil
+	return books, metadata, nil
 }
 
 func (b BookModel) Update(book *Book) error {
