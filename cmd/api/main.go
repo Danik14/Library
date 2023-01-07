@@ -70,20 +70,6 @@ func main() {
 	// creating a pointer to a mongodb struct
 	var db *mongo.Client = DBSet()
 
-	// cfg.db.dsn = os.Getenv("DB-DSN") //in file .env: DB-DSN="postgres://user:password@localhost/dbName?sslmode=disable"
-	// fmt.Println(cfg.db.dsn)
-	// db, err := openDB(cfg)
-	// if err != nil {
-	// 	fmt.Println(1)
-	// 	logger.PrintFatal(err, nil)
-	// }
-	// // Defer a call to db.Close() so that the connection pool is closed before the
-	// // main() function exits.
-	// defer db.Close()
-	// // Also log a message to say that the connection pool has been successfully
-	// // established.
-	// logger.PrintInfo("database connection pool established", nil)
-
 	app := &application{
 		config: cfg,
 		logger: logger,
@@ -161,38 +147,3 @@ func DBSet() *mongo.Client {
 	fmt.Println("Successfuly Connected")
 	return client
 }
-
-// func openDB(cfg config) (*sql.DB, error) {
-// 	// Use sql.Open() to create an empty connection pool, using the DSN from the config
-// 	// struct.
-// 	db, err := sql.Open("postgres", cfg.db.dsn)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	db.SetMaxOpenConns(cfg.db.maxOpenConns)
-
-// 	// Set the maximum number of idle connections in the pool. Again, passing a value
-// 	// less than or equal to 0 will mean there is no limit.
-// 	db.SetMaxIdleConns(cfg.db.maxIdleConns)
-
-// 	// Use the time.ParseDuration() function to convert the idle timeout duration string
-// 	// to a time.Duration type.
-// 	duration, err := time.ParseDuration(cfg.db.maxIdleTime)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// Set the maximum idle timeout.
-// 	db.SetConnMaxIdleTime(duration)
-// 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-// 	defer cancel()
-
-// 	err = db.PingContext(ctx)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// Return the sql.DB connection pool.
-// 	return db, nil
-// }
