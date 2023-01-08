@@ -11,7 +11,17 @@ import (
 	"github.com/Danik14/library/internal/validator"
 	"github.com/lib/pq"
 	uuid "github.com/satori/go.uuid"
+	"golang.org/x/crypto/bcrypt"
 )
+
+var (
+	ErrDuplicateEmail = errors.New("duplicate email")
+)
+
+type password struct {
+	plaintext *string
+	hash      []byte
+}
 
 type User struct {
 	ID             uuid.UUID `json:"id"`
@@ -19,9 +29,37 @@ type User struct {
 	FirstName      string    `json:"firstName"`
 	LastName       string    `json:"lastName"`
 	Email          string    `json:"email"`
-	HashedPassword string    `json:"-"`
+	HashedPassword password  `json:"-"`
 	DOB            time.Time `json:"dob"` // date of birth
 	Version        int32     `json:"version"`
+}
+
+// The Set() method calculates the bcrypt hash of a plaintext password, and stores both
+// the hash and the plaintext versions in the struct.
+func (p *password) Set(plaintextPassword string) error {
+	hash, err := bcrypt.GenerateFromPassword([]byte(plaintextPassword), 12)
+	if err != nil {
+		return err
+	}
+	p.plaintext = &plaintextPassword
+	p.hash = hash
+	return nil
+}
+
+// The Matches() method checks whether the provided plaintext password matches the
+// hashed password stored in the struct, returning true if it matches and false
+// otherwise.
+func (p *password) Matches(plaintextPassword string) (bool, error) {
+	err := bcrypt.CompareHashAndPassword(p.hash, []byte(plaintextPassword))
+	if err != nil {
+		switch {
+		case errors.Is(err, bcrypt.ErrMismatchedHashAndPassword):
+			return false, nil
+		default:
+			return false, err
+		}
+	}
+	return true, nil
 }
 
 type UserModel struct {
@@ -37,18 +75,55 @@ func (u UserModel) Insert(user *User) error {
 	// the movie struct. Declaring this slice immediately next to our SQL query helps to
 	// make it nice and clear *what values are being used where* in the query.
 
-	// hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.HashedPassword), 12)
+	// hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.HashedPassword.plaintext), 12)
 	// if err != nil {
 	// 	return nil, err
 	// }
-	args := []any{user.FirstName, user.LastName, user.Email, user.HashedPassword, pq.FormatTimestamp(user.DOB)}
+	args := []any{user.FirstName, user.LastName, user.Email, user.HashedPassword.hash, pq.FormatTimestamp(user.DOB)}
 
 	// Create a context with a 3-second timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	// Use QueryRowContext() and pass the context as the first argument.
-	return u.DB.QueryRowContext(ctx, query, args...).Scan(&user.ID, &user.CreatedAt, &user.Version)
+	err := u.DB.QueryRowContext(ctx, query, args...).Scan(&user.ID, &user.CreatedAt, &user.Version)
+	if err != nil {
+		switch {
+		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
+			return ErrDuplicateEmail
+		default:
+			return err
+		}
+	}
+	return nil
+}
+
+func (m UserModel) GetByEmail(email string) (*User, error) {
+	query := `
+	SELECT id, createdAt, firstName, lastName, email, hashedPassword, dob, version FROM users
+	WHERE email = $1`
+	var user User
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	err := m.DB.QueryRowContext(ctx, query, email).Scan(
+		&user.ID,
+		&user.CreatedAt,
+		&user.FirstName,
+		&user.LastName,
+		&user.Email,
+		&user.HashedPassword.hash,
+		&user.DOB,
+		&user.Version,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	return &user, nil
 }
 
 func (u UserModel) GetAll(firstName string, lastName string, email string, filters data.Filters) ([]*User, data.Metadata, error) {
@@ -94,7 +169,7 @@ func (u UserModel) GetAll(firstName string, lastName string, email string, filte
 			&user.FirstName,
 			&user.LastName,
 			&user.Email,
-			&user.HashedPassword,
+			&user.HashedPassword.hash,
 			&user.DOB,
 			&user.Version,
 		)
@@ -143,7 +218,7 @@ func (u UserModel) Get(id uuid.UUID) (*User, error) {
 		&user.FirstName,
 		&user.LastName,
 		&user.Email,
-		&user.HashedPassword,
+		&user.HashedPassword.hash,
 		&user.DOB,
 		&user.Version,
 	)
@@ -175,7 +250,7 @@ func (u UserModel) Update(user *User) error {
 		user.FirstName,
 		user.LastName,
 		user.Email,
-		user.HashedPassword,
+		user.HashedPassword.hash,
 		user.DOB,
 		user.ID,
 		user.Version,
@@ -245,8 +320,8 @@ func ValidateUser(v *validator.Validator, user *User) {
 	v.Check(len(user.Email) <= 500, "email", "must not be more than 500 bytes long")
 	v.Check(validator.Matches(user.Email, validator.EmailRX), "email", "email format is not correct")
 
-	v.Check(user.HashedPassword != "", "password", "must be provided")
-	v.Check(len(user.HashedPassword) <= 500, "password", "must not be more than 500 bytes long")
+	v.Check(*user.HashedPassword.plaintext != "", "password", "must be provided")
+	v.Check(len(*user.HashedPassword.plaintext) <= 500, "password", "must not be more than 500 bytes long")
 
 	v.Check(user.DOB != time.Time{}, "dob", "must be provided")
 	year := int32(user.DOB.Year())

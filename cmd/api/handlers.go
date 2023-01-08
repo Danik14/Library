@@ -125,11 +125,18 @@ func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request
 
 	// Copy the values from the input struct to a new Movie struct.
 	user := &models.User{
-		FirstName:      input.FirstName,
-		LastName:       input.LastName,
-		Email:          input.Email,
-		HashedPassword: input.Password,
-		DOB:            input.DOB,
+		FirstName: input.FirstName,
+		LastName:  input.LastName,
+		Email:     input.Email,
+		DOB:       input.DOB,
+	}
+
+	// Use the Password.Set() method to generate and store the hashed and plaintext
+	// passwords.
+	err = user.HashedPassword.Set(input.Password)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
 	}
 
 	// Initialize a new Validator.
@@ -413,7 +420,7 @@ func (app *application) updateUserHandler(w http.ResponseWriter, r *http.Request
 		user.Email = *input.Email
 	}
 	if input.Password != nil {
-		user.HashedPassword = *input.Password
+		user.HashedPassword.Set(*input.Password)
 	}
 	if input.DOB != nil {
 		user.DOB = *input.DOB
