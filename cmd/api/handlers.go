@@ -84,7 +84,7 @@ func (app *application) createBookHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+	var ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	book.ID = primitive.NewObjectID()
@@ -191,7 +191,7 @@ func (app *application) showBookHandler(w http.ResponseWriter, r *http.Request) 
 	// Call the Get() method to fetch the data for a specific book. We also need to
 	// use the errors.Is() function to check if it returns a data.ErrRecordNotFound
 	// error, in which case we send a 404 Not Found response to the client.
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	cursor, err := app.models.Books.DB.Find(ctx, bson.M{"_id": objectId})
@@ -254,7 +254,7 @@ func (app *application) listBooksHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+	var ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	searchquerydb, err := app.models.Books.DB.Find(ctx, bson.M{})
@@ -281,6 +281,155 @@ func (app *application) listBooksHandler(w http.ResponseWriter, r *http.Request)
 	// }
 	// Send a JSON response containing the movie data.
 	err = app.writeJSON(w, http.StatusOK, envelope{"books": books}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request) {
+	// user, err := models.NewUser("Danik", "Slave", "danik_slave@gmail.com", "123", time.Now(), 1)
+	var input struct {
+		FirstName string    `json:"firstName"`
+		LastName  string    `json:"lastName"`
+		Email     string    `json:"email"`
+		Password  string    `json:"password"`
+		DOB       time.Time `json:"dob"` // date of birth
+	}
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.logError(r, err)
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	// Copy the values from the input struct to a new Movie struct.
+	user := &models.User{
+		FirstName:      input.FirstName,
+		LastName:       input.LastName,
+		Email:          input.Email,
+		HashedPassword: input.Password,
+		DOB:            input.DOB,
+	}
+
+	// Initialize a new Validator.
+	v := validator.New()
+	// Call the ValidateMovie() function and return a response containing the errors if
+	// any of the checks fail.
+	if models.ValidateUser(v, user); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	var ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	user.ID = primitive.NewObjectID()
+	user.CreatedAt = time.Now()
+	_, anyerr := app.models.Users.DB.InsertOne(ctx, user)
+	if anyerr != nil {
+		app.serverErrorResponse(w, r, anyerr)
+	}
+
+	headers := make(http.Header)
+	headers.Set("Location", fmt.Sprintf("/v1/user/%d", user.ID))
+
+	// Write a JSON response with a 201 Created status code, the movie data in the
+	// response body, and the Location header.
+	err = app.writeJSON(w, http.StatusCreated, envelope{"user": user}, headers)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) showUserHandler(w http.ResponseWriter, r *http.Request) {
+	objectId, err := app.readPrimitiveObjectIdParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+	// Call the Get() method to fetch the data for a specific book. We also need to
+	// use the errors.Is() function to check if it returns a data.ErrRecordNotFound
+	// error, in which case we send a 404 Not Found response to the client.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	cursor, err := app.models.Users.DB.Find(ctx, bson.M{"_id": objectId})
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		app.logError(r, err)
+		return
+	}
+
+	user := []models.User{}
+
+	err = cursor.All(ctx, &user)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		app.logError(r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"user": user}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) listUsersHandler(w http.ResponseWriter, r *http.Request) {
+	// To keep things consistent with our other handlers, we'll define an input struct
+	// to hold the expected values from the request query string.
+	var input struct {
+		FirstName string
+		LastName  string
+		Email     string
+		data.Filters
+	}
+	// Initialize a new Validator instance.
+	v := validator.New()
+	// Call r.URL.Query() to get the url.Values map containing the query string data.
+	qs := r.URL.Query()
+	// Use our helpers to extract the title and genres query string values, falling back
+	// to defaults of an empty string and an empty slice respectively if they are not
+	// provided by the client.
+	input.FirstName = app.readString(qs, "firstName", "")
+	input.LastName = app.readString(qs, "lastName", "")
+	// Get the page and page_size query string values as integers. Notice that we set
+	// the default page value to 1 and default page_size to 20, and that we pass the
+	// validator instance as the final argument here.
+	input.Email = app.readString(qs, "email", "")
+	// input.DOB = app.readDate(qs, "dob", time.Time{}, v)
+	input.Filters.Page = app.readInt(qs, "page", 1, v)
+	input.Filters.PageSize = app.readInt(qs, "pageSize", 20, v)
+	// Extract the sort query string value, falling back to "id" if it is not provided
+	// by the client (which will imply a ascending sort on movie ID).
+	input.Filters.Sort = app.readString(qs, "sort", "createdAt")
+	input.Filters.SortSafelist = []string{"createdAt", "id", "firstName", "lastName", "email", "dob", "-id", "-firstname", "-lastName", "-email", "-dob"}
+
+	// Check the Validator instance for any errors and use the failedValidationResponse()
+	// helper to send the client a response if necessary.
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	var ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	searchquerydb, err := app.models.Users.DB.Find(ctx, bson.M{})
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	users := []models.User{}
+	err = searchquerydb.All(ctx, &users)
+	if err != nil {
+		app.logError(r, err)
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	defer searchquerydb.Close(ctx)
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"users": users}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
@@ -511,6 +660,7 @@ func (app *application) listBooksHandler(w http.ResponseWriter, r *http.Request)
 // 		default:
 // 			app.serverErrorResponse(w, r, err)
 // 		}
+
 // 		return
 // 	}
 // 	// Return a 200 OK status code along with a success message.

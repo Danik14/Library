@@ -1,20 +1,21 @@
 package models
 
 import (
+	"time"
+
 	"github.com/Danik14/library/internal/validator"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type Book struct {
-	ID primitive.ObjectID `json:"_id" bson:"_id"`
-	// CreatedAt time.Time          `json:"-"`
-	Title  string   `json:"title"`
-	Author string   `json:"author"`
-	Year   int32    `json:"year,omitempty"`
-	Pages  Pages    `json:"pages,omitempty"`
-	Genres []string `json:"genres,omitempty"`
-	// Version int32    `json:"version"`
+	ID        primitive.ObjectID `json:"_id" bson:"_id"`
+	CreatedAt time.Time          `json:"-"`
+	Title     string             `json:"title"`
+	Author    string             `json:"author"`
+	Year      int32              `json:"year,omitempty"`
+	Pages     Pages              `json:"pages,omitempty"`
+	Genres    []string           `json:"genres,omitempty"`
 }
 
 type BookModel struct {

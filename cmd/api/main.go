@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -21,14 +20,7 @@ import (
 )
 
 type config struct {
-	// port int
-	// env  string
-	db struct {
-		dsn          string
-		maxOpenConns int
-		maxIdleConns int
-		maxIdleTime  string
-	}
+	port    int
 	limiter struct {
 		rps     float64
 		burst   int
@@ -49,16 +41,16 @@ func main() {
 	// flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
 	// flag.Parse()
 	// err := godotenv.Load("../../.env")
-	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL max open connections")
-	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
-	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL max connection idle time")
+	// flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL max open connections")
+	// flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
+	// flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL max connection idle time")
 	// Create command line flags to read the setting values into the config struct.
 	// Notice that we use true as the default for the 'enabled' setting?
-	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 2, "Rate limiter maximum requests per second")
-	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate limiter maximum burst")
-	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
+	// flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 2, "Rate limiter maximum requests per second")
+	// flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate limiter maximum burst")
+	// flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
 
-	flag.Parse()
+	// flag.Parse()
 
 	logger := jsonlog.New(os.Stdout, jsonlog.LevelError)
 
@@ -73,8 +65,8 @@ func main() {
 	app := &application{
 		config: cfg,
 		logger: logger,
-		models: models.NewModels(db.Database("goShop").Collection("users"),
-			db.Database("goShop").Collection("books")),
+		models: models.NewModels(db.Database("library").Collection("users"),
+			db.Database("library").Collection("books")),
 	}
 
 	srv := &http.Server{
@@ -127,13 +119,13 @@ func main() {
 
 func DBSet() *mongo.Client {
 	//connecting to local mongodb
-	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
+	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb+srv://library:library@cluster1.wfqyfpl.mongodb.net/library?retryWrites=true&w=majority"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	//Set context with connection timeOut for secure connection
-	dbContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	dbContext, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 
 	defer cancel()
 
