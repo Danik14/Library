@@ -60,7 +60,7 @@ func main() {
 	}
 
 	// creating a pointer to a mongodb struct
-	var db *mongo.Client = DBSet()
+	var db *mongo.Client = DBSet(os.Getenv("DB-DSN"))
 
 	app := &application{
 		config: cfg,
@@ -117,9 +117,9 @@ func main() {
 
 }
 
-func DBSet() *mongo.Client {
+func DBSet(dsn string) *mongo.Client {
 	//connecting to local mongodb
-	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb+srv://library:library@cluster1.wfqyfpl.mongodb.net/library?retryWrites=true&w=majority"))
+	client, err := mongo.NewClient(options.Client().ApplyURI(dsn))
 	if err != nil {
 		log.Fatal(err)
 	}
