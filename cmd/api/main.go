@@ -10,10 +10,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/Danik14/library/internal/jsonlog"
+	"github.com/Danik14/library/internal/mailer"
 	"github.com/Danik14/library/internal/models"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -33,12 +35,21 @@ type config struct {
 		burst   int
 		enabled bool
 	}
+	smtp struct {
+		host     string
+		port     int
+		username string
+		password string
+		sender   string
+	}
 }
 
 type application struct {
 	config config
 	logger *jsonlog.Logger
 	models models.Models
+	mailer mailer.Mailer
+	wg     sync.WaitGroup
 }
 
 func main() {
@@ -56,6 +67,12 @@ func main() {
 	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 2, "Rate limiter maximum requests per second")
 	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate limiter maximum burst")
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
+
+	flag.StringVar(&cfg.smtp.host, "smtp-host", "smtp.mailtrap.io", "SMTP host")
+	flag.IntVar(&cfg.smtp.port, "smtp-port", 25, "SMTP port")
+	flag.StringVar(&cfg.smtp.username, "smtp-username", "18fdaf772b9f67", "SMTP username")
+	flag.StringVar(&cfg.smtp.password, "smtp-password", "6156dbae7ac123", "SMTP password")
+	flag.StringVar(&cfg.smtp.sender, "smtp-sender", "Library <library_slave@gmail.com>", "SMTP sender")
 
 	flag.Parse()
 
@@ -84,6 +101,7 @@ func main() {
 		config: cfg,
 		logger: logger,
 		models: models.NewModels(db),
+		mailer: mailer.New(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
 	}
 
 	srv := &http.Server{

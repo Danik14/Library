@@ -159,8 +159,16 @@ func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request
 	// interpolating the system-generated ID for our new movie in the URL.
 	headers := make(http.Header)
 	headers.Set("Location", fmt.Sprintf("/user/%d", user.ID))
-	// Write a JSON response with a 201 Created status code, the movie data in the
-	// response body, and the Location header.
+
+	// Use the background helper to execute an anonymous function that sends the welcome
+	// email.
+	app.background(func() {
+		err = app.mailer.Send(user.Email, "user_welcome.tmpl", user)
+		if err != nil {
+			app.logger.PrintError(err, nil)
+		}
+	})
+
 	err = app.writeJSON(w, http.StatusCreated, envelope{"user": user}, headers)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
