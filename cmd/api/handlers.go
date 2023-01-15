@@ -158,7 +158,7 @@ func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request
 	// empty http.Header map and then use the Set() method to add a new Location header,
 	// interpolating the system-generated ID for our new movie in the URL.
 	headers := make(http.Header)
-	headers.Set("Location", fmt.Sprintf("/user/%d", user.ID))
+	headers.Set("Location", fmt.Sprintf("/users/%d", user.ID))
 
 	// Use the background helper to execute an anonymous function that sends the welcome
 	// email.
@@ -334,7 +334,7 @@ func (app *application) updateBookHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) deleteBookHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract the movie ID from the URL.
 	id, err := app.readUUIDParam(r)
 	if err != nil {

@@ -55,6 +55,13 @@ type application struct {
 func main() {
 	var cfg config
 
+	logger := jsonlog.New(os.Stdout, jsonlog.LevelError)
+
+	err := godotenv.Load()
+	if err != nil {
+		logger.PrintError(err, nil)
+	}
+
 	// flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	// flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
 	// flag.Parse()
@@ -76,18 +83,19 @@ func main() {
 
 	flag.Parse()
 
-	logger := jsonlog.New(os.Stdout, jsonlog.LevelError)
+	if os.Getenv("SMTP_HOST_USERNAME") != "" {
+		cfg.smtp.username = os.Getenv("SMTP_HOST_USERNAME")
+	}
 
-	err := godotenv.Load()
-	if err != nil {
-		logger.PrintError(err, nil)
+	if os.Getenv("SMTP_HOST_PASSWORD") != "" {
+		cfg.smtp.password = os.Getenv("SMTP_HOST_PASSWORD")
 	}
 
 	cfg.db.dsn = os.Getenv("DB-DSN") //in file .env: DB-DSN="postgres://user:password@localhost/dbName?sslmode=disable"
 	fmt.Println(cfg.db.dsn)
 	db, err := openDB(cfg)
 	if err != nil {
-		fmt.Println(1)
+		fmt.Println("Error connecting to DB")
 		logger.PrintFatal(err, nil)
 	}
 	// Defer a call to db.Close() so that the connection pool is closed before the

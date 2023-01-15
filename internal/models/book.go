@@ -101,8 +101,8 @@ SELECT count(*) OVER(), id, created_at, title, author, year, pages, genres, vers
 WHERE (to_tsvector('simple', title) @@ plainto_tsquery('simple', $1) OR $1 = '')
 AND (to_tsvector('simple', author) @@ plainto_tsquery('simple', $2) OR $2 = '')
 AND (genres @> $3 OR $3 = '{}')
-ORDER BY %s %s, id ASC,
-LIMIT $3 OFFSET $4`, filters.SortColumn(), filters.SortDirection())
+ORDER BY %s %s, id ASC
+LIMIT $4 OFFSET $5`, filters.SortColumn(), filters.SortDirection())
 	// Create a context with a 3-second timeout.
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -112,6 +112,7 @@ LIMIT $3 OFFSET $4`, filters.SortColumn(), filters.SortDirection())
 	// Pass the title and genres as the placeholder parameter values.
 	rows, err := m.DB.QueryContext(ctx, query, args...)
 	if err != nil {
+		fmt.Println(query)
 		return nil, data.Metadata{}, err
 	}
 
