@@ -3,15 +3,10 @@ package main
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"flag"
 	"fmt"
-	"log"
-	"net/http"
 	"os"
-	"os/signal"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/Danik14/library/internal/jsonlog"
@@ -22,9 +17,9 @@ import (
 )
 
 type config struct {
-	// port int
-	// env  string
-	db struct {
+	port int
+	env  string
+	db   struct {
 		dsn          string
 		maxOpenConns int
 		maxIdleConns int
@@ -55,17 +50,16 @@ type application struct {
 func main() {
 	var cfg config
 
-	logger := jsonlog.New(os.Stdout, jsonlog.LevelError)
+	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 
 	err := godotenv.Load()
 	if err != nil {
 		logger.PrintError(err, nil)
 	}
 
-	// flag.IntVar(&cfg.port, "port", 4000, "API server port")
-	// flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
-	// flag.Parse()
-	// err := godotenv.Load("../../.env")
+	flag.IntVar(&cfg.port, "port", 4000, "API server port")
+	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
+
 	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL max open connections")
 	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
 	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL max connection idle time")
@@ -90,9 +84,11 @@ func main() {
 		fmt.Println("Error connecting to DB")
 		logger.PrintFatal(err, nil)
 	}
+
 	// Defer a call to db.Close() so that the connection pool is closed before the
 	// main() function exits.
 	defer db.Close()
+
 	// Also log a message to say that the connection pool has been successfully
 	// established.
 	logger.PrintInfo("database connection pool established", nil)
@@ -104,51 +100,25 @@ func main() {
 		mailer: mailer.New(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
 	}
 
-	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%s", os.Getenv("PORT")), //cfg.port),
-		Handler:      app.routes(),
-		ErrorLog:     log.New(logger, "", 0),
-		IdleTimeout:  time.Minute,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
+	fmt.Println(1)
+
+	// srv := &http.Server{
+	// 	Addr:         fmt.Sprintf(":%s", os.Getenv("PORT")), //cfg.port),
+	// 	Handler:      app.routes(),
+	// 	ErrorLog:     log.New(logger, "", 0),
+	// 	IdleTimeout:  time.Minute,
+	// 	ReadTimeout:  10 * time.Second,
+	// 	WriteTimeout: 30 * time.Second,
+	// }
+
+	// logger.PrintInfo("Starting server on port: %s \n", map[string]string{
+	// 	"addr": fmt.Sprintf("%d", cfg.port),
+	// })
+
+	err = app.serve()
+	if err != nil {
+		logger.PrintFatal(err, nil)
 	}
-
-	logger.PrintInfo("Starting server on port: %s \n", map[string]string{
-		"addr": srv.Addr,
-		// "env": cfg.Env,
-	})
-
-	// Initializing the server in a goroutine so that
-	// it won't block the graceful shutdown handling below
-	go func() {
-		if err := srv.ListenAndServe(); err != nil && errors.Is(err, http.ErrServerClosed) {
-			log.Printf("listen: %s\n", err)
-		}
-	}()
-
-	// Wait for interrupt signal to gracefully shutdown the server with
-	// a timeout of 5 seconds.
-	// Making buffered channel, if not giving size
-	// throwing warning, not sure if made perfectly
-	quit := make(chan os.Signal, 1)
-
-	// kill (no param) default send syscall.SIGTERM
-	// kill -2 is syscall.SIGINT
-	// kill -9 is syscall.SIGKILL but can't be caught, so don't need to add it
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("Shutting down server...")
-
-	// The context is used to inform the server it has 5 seconds to finish
-	// the request it is currently handling
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown:", err)
-	}
-
-	log.Println("Server exiting")
 
 }
 
