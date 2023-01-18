@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/Danik14/library/internal/data"
 	"github.com/Danik14/library/internal/models"
@@ -110,11 +109,11 @@ func (app *application) createBookHandler(w http.ResponseWriter, r *http.Request
 
 func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		FirstName string    `json:"firstName"`
-		LastName  string    `json:"lastName"`
-		Email     string    `json:"email"`
-		Password  string    `json:"password"`
-		DOB       time.Time `json:"dob"` // date of birth
+		FirstName string           `json:"firstName"`
+		LastName  string           `json:"lastName"`
+		Email     string           `json:"email"`
+		Password  string           `json:"password"`
+		DOB       models.CivilTime `json:"dob"` // date of birth
 	}
 	err := app.readJSON(w, r, &input)
 	if err != nil {
@@ -404,11 +403,11 @@ func (app *application) updateUserHandler(w http.ResponseWriter, r *http.Request
 	}
 	// Declare an input struct to hold the expected data from the client.
 	var input struct {
-		FirstName *string    `json:"firstName"`
-		LastName  *string    `json:"lastName"`
-		Email     *string    `json:"email"`
-		Password  *string    `json:"password"`
-		DOB       *time.Time `json:"dob"` // date of birth
+		FirstName *string           `json:"firstName"`
+		LastName  *string           `json:"lastName"`
+		Email     *string           `json:"email"`
+		Password  *string           `json:"password"`
+		DOB       *models.CivilTime `json:"dob"` // date of birth
 	}
 	// Read the JSON request body data into the input struct.
 	err = app.readJSON(w, r, &input)

@@ -30,7 +30,7 @@ type User struct {
 	LastName       string    `json:"lastName"`
 	Email          string    `json:"email"`
 	HashedPassword password  `json:"-"`
-	DOB            time.Time `json:"dob"` // date of birth
+	DOB            CivilTime `json:"dob"` // date of birth
 	Version        int32     `json:"version"`
 }
 
@@ -79,7 +79,7 @@ func (u UserModel) Insert(user *User) error {
 	// if err != nil {
 	// 	return nil, err
 	// }
-	args := []any{user.FirstName, user.LastName, user.Email, user.HashedPassword.hash, pq.FormatTimestamp(user.DOB)}
+	args := []any{user.FirstName, user.LastName, user.Email, user.HashedPassword.hash, pq.FormatTimestamp(time.Time(user.DOB))}
 
 	// Create a context with a 3-second timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -323,10 +323,10 @@ func ValidateUser(v *validator.Validator, user *User) {
 	v.Check(*user.HashedPassword.plaintext != "", "password", "must be provided")
 	v.Check(len(*user.HashedPassword.plaintext) <= 500, "password", "must not be more than 500 bytes long")
 
-	v.Check(user.DOB != time.Time{}, "dob", "must be provided")
-	year := int32(user.DOB.Year())
-	month := int32(user.DOB.Month())
-	day := int32(user.DOB.Day())
+	v.Check(time.Time(user.DOB) != time.Time{}, "dob", "must be provided")
+	year := int32(time.Time(user.DOB).Year())
+	month := int32(time.Time(user.DOB).Month())
+	day := int32(time.Time(user.DOB).Day())
 	v.Check(year >= 1900, "dob", "must be greater than 1900")
 	v.Check(year <= int32(time.Now().Year()), "dob", "year must not be in the future")
 	if year == int32(time.Now().Year()) {
