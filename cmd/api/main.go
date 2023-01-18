@@ -75,24 +75,16 @@ func main() {
 	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate limiter maximum burst")
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
 
-	flag.StringVar(&cfg.smtp.host, "smtp-host", "smtp.mailtrap.io", "SMTP host")
-	flag.IntVar(&cfg.smtp.port, "smtp-port", 25, "SMTP port")
-	flag.StringVar(&cfg.smtp.username, "smtp-username", "18fdaf772b9f67", "SMTP username")
-	flag.StringVar(&cfg.smtp.password, "smtp-password", "6156dbae7ac123", "SMTP password")
-	flag.StringVar(&cfg.smtp.sender, "smtp-sender", "Library <library_slave@gmail.com>", "SMTP sender")
+	flag.StringVar(&cfg.smtp.host, "smtp-host", "smtp.office365.com", "SMTP host")
+	flag.IntVar(&cfg.smtp.port, "smtp-port", 587, "SMTP port")
+	flag.StringVar(&cfg.smtp.username, "smtp-username", os.Getenv("SMTP_HOST_USERNAME"), "SMTP username")
+	flag.StringVar(&cfg.smtp.password, "smtp-password", os.Getenv("SMTP_HOST_PASSWORD"), "SMTP password")
+	flag.StringVar(&cfg.smtp.sender, "smtp-sender", "Library <211360@astanait.edu.kz>", "SMTP sender")
 
 	flag.Parse()
 
-	if os.Getenv("SMTP_HOST_USERNAME") != "" {
-		cfg.smtp.username = os.Getenv("SMTP_HOST_USERNAME")
-	}
-
-	if os.Getenv("SMTP_HOST_PASSWORD") != "" {
-		cfg.smtp.password = os.Getenv("SMTP_HOST_PASSWORD")
-	}
-
 	cfg.db.dsn = os.Getenv("DB-DSN") //in file .env: DB-DSN="postgres://user:password@localhost/dbName?sslmode=disable"
-	fmt.Println(cfg.db.dsn)
+	fmt.Println(cfg)
 	db, err := openDB(cfg)
 	if err != nil {
 		fmt.Println("Error connecting to DB")
