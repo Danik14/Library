@@ -79,7 +79,7 @@ func main() {
 	flag.IntVar(&cfg.smtp.port, "smtp-port", 587, "SMTP port")
 	flag.StringVar(&cfg.smtp.username, "smtp-username", os.Getenv("SMTP_HOST_USERNAME"), "SMTP username")
 	flag.StringVar(&cfg.smtp.password, "smtp-password", os.Getenv("SMTP_HOST_PASSWORD"), "SMTP password")
-	flag.StringVar(&cfg.smtp.sender, "smtp-sender", "Library <211360@astanait.edu.kz>", "SMTP sender")
+	flag.StringVar(&cfg.smtp.sender, "smtp-sender", "Library <211416@astanait.edu.kz>", "SMTP sender")
 
 	flag.Parse()
 

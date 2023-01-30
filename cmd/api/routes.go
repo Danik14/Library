@@ -19,6 +19,7 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/v1/users/:id", app.showUserHandler)
 	router.HandlerFunc(http.MethodPatch, "/v1/users/:id", app.updateUserHandler)
 	router.HandlerFunc(http.MethodDelete, "/v1/users/:id", app.deleteUserHandler)
+	router.HandlerFunc(http.MethodPut, "/v1/users/activated", app.activateUserHandler)
 
 	router.HandlerFunc(http.MethodPatch, "/v1/books/:id", app.updateBookHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/books/:id", app.showBookHandler)

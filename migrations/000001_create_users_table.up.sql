@@ -6,5 +6,6 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(100) NOT NULL,
     hashedPassword bytea NOT NULL,
     dob TIMESTAMP NOT NULL,
+    activated BOOL NOT NULL DEFAULT FALSE,
     version INTEGER NOT NULL DEFAULT 1
 );
