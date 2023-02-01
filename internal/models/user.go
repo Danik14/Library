@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -31,6 +32,7 @@ type User struct {
 	Email          string    `json:"email"`
 	HashedPassword password  `json:"-"`
 	DOB            CivilTime `json:"dob"` // date of birth
+	Activated      bool      `json:"activated"`
 	Version        int32     `json:"version"`
 }
 
@@ -70,7 +72,7 @@ func (u UserModel) Insert(user *User) error {
 	// return &User{CreatedAt: time.Now(), FirstName: firstName, LastName: lastName, Email: email, HashedPassword: password, DOB: dob, Version: version}, nil
 	// Define the SQL query for inserting a new record in the movies table and returning
 	// the system-generated data.
-	query := `INSERT INTO users (firstname, lastname, email, hashedpassword, dob) VALUES ($1, $2, $3, $4, $5) RETURNING id, createdAt, version;`
+	query := `INSERT INTO users (firstname, lastname, email, hashedpassword, dob, activated) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, createdAt, version;`
 	// Create an args slice containing the values for the placeholder parameters from
 	// the movie struct. Declaring this slice immediately next to our SQL query helps to
 	// make it nice and clear *what values are being used where* in the query.
@@ -79,7 +81,7 @@ func (u UserModel) Insert(user *User) error {
 	// if err != nil {
 	// 	return nil, err
 	// }
-	args := []any{user.FirstName, user.LastName, user.Email, user.HashedPassword.hash, pq.FormatTimestamp(time.Time(user.DOB))}
+	args := []any{user.FirstName, user.LastName, user.Email, user.HashedPassword.hash, pq.FormatTimestamp(time.Time(user.DOB)), user.Activated}
 
 	// Create a context with a 3-second timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -100,7 +102,7 @@ func (u UserModel) Insert(user *User) error {
 
 func (m UserModel) GetByEmail(email string) (*User, error) {
 	query := `
-	SELECT id, createdAt, firstName, lastName, email, hashedPassword, dob, version FROM users
+	SELECT id, createdAt, firstName, lastName, email, hashedPassword, dob, version, activated FROM users
 	WHERE email = $1`
 	var user User
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -114,6 +116,7 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
 		&user.HashedPassword.hash,
 		&user.DOB,
 		&user.Version,
+		&user.Activated,
 	)
 	if err != nil {
 		switch {
@@ -128,7 +131,7 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
 
 func (u UserModel) GetAll(firstName string, lastName string, email string, filters data.Filters) ([]*User, data.Metadata, error) {
 	// Construct the SQL query to retrieve all movie records.
-	query := fmt.Sprintf(`SELECT count(*) OVER(), id, createdAt, firstName, lastName, email, hashedPassword, dob, version FROM users
+	query := fmt.Sprintf(`SELECT count(*) OVER(), id, createdAt, firstName, lastName, email, hashedPassword, dob, version, activated FROM users
 	WHERE (to_tsvector('simple', firstName) @@ plainto_tsquery('simple', $1) OR $1 = '')
 	AND (to_tsvector('simple', lastName) @@ plainto_tsquery('simple', $2) OR $2 = '')
 	AND (to_tsvector('simple', email) @@ plainto_tsquery('simple', $3) OR $3 = '')
@@ -172,6 +175,7 @@ func (u UserModel) GetAll(firstName string, lastName string, email string, filte
 			&user.HashedPassword.hash,
 			&user.DOB,
 			&user.Version,
+			&user.Activated,
 		)
 		if err != nil {
 			return nil, data.Metadata{}, err
@@ -198,7 +202,7 @@ func (u UserModel) Get(id uuid.UUID) (*User, error) {
 	// 	return nil, ErrRecordNotFound
 	// }
 	// Define the SQL query for retrieving the movie data.
-	query := `SELECT id, createdAt, firstName, lastName, email, hashedPassword, dob, version FROM users WHERE id = $1`
+	query := `SELECT id, createdAt, firstName, lastName, email, hashedPassword, dob, version, activated FROM users WHERE id = $1`
 
 	// Declare a Movie struct to hold the data returned by the query.
 	var user User // Execute the query using the QueryRow() method, passing in the provided id value
@@ -221,6 +225,7 @@ func (u UserModel) Get(id uuid.UUID) (*User, error) {
 		&user.HashedPassword.hash,
 		&user.DOB,
 		&user.Version,
+		&user.Activated,
 	)
 	// Handle any errors. If there was no matching movie found, Scan() will return
 	// a sql.ErrNoRows error. We check for this and return our custom ErrRecordNotFound
@@ -242,8 +247,8 @@ func (u UserModel) Update(user *User) error {
 	// number.
 	query := `
 	UPDATE users
-	SET firstName = $1, lastName = $2, email = $3, hashedPassword = $4, dob = $5, version = version + 1
-	WHERE id = $6 AND version = $7
+	SET firstName = $1, lastName = $2, email = $3, hashedPassword = $4, dob = $5, version = version + 1, activated=$6
+	WHERE id = $7 AND version = $8
 	RETURNING version`
 	// Create an args slice containing the values for the placeholder parameters.
 	args := []any{
@@ -251,7 +256,8 @@ func (u UserModel) Update(user *User) error {
 		user.LastName,
 		user.Email,
 		user.HashedPassword.hash,
-		user.DOB,
+		pq.FormatTimestamp(time.Time(user.DOB)),
+		user.Activated,
 		user.ID,
 		user.Version,
 	}
@@ -335,4 +341,51 @@ func ValidateUser(v *validator.Validator, user *User) {
 			v.Check(day <= int32(time.Now().Day()), "dob", "day must not be in the future")
 		}
 	}
+}
+
+func (m UserModel) GetForToken(tokenScope, tokenPlaintext string) (*User, error) {
+	// Calculate the SHA-256 hash of the plaintext token provided by the client.
+	// Remember that this returns a byte *array* with length 32, not a slice.
+	tokenHash := sha256.Sum256([]byte(tokenPlaintext))
+	// Set up the SQL query.
+	//createdAt, firstName, lastName, email, hashedPassword, dob, version, activated
+	query := `
+SELECT users.id, users.createdAt, users.firstName, users.lastName, users.email, users.hashedPassword, users.dob, users.version, users.activated
+FROM users
+INNER JOIN tokens
+ON users.id = tokens.user_id
+WHERE tokens.hash = $1
+AND tokens.scope = $2
+AND tokens.expiry > $3`
+	// Create a slice containing the query arguments. Notice how we use the [:] operator
+	// to get a slice containing the token hash, rather than passing in the array (which
+	// is not supported by the pq driver), and that we pass the current time as the
+	// value to check against the token expiry.
+	args := []any{tokenHash[:], tokenScope, time.Now()}
+	var user User
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	// Execute the query, scanning the return values into a User struct. If no matching
+	// record is found we return an ErrRecordNotFound error.
+	err := m.DB.QueryRowContext(ctx, query, args...).Scan(
+		&user.ID,
+		&user.CreatedAt,
+		&user.FirstName,
+		&user.LastName,
+		&user.Email,
+		&user.HashedPassword.hash,
+		&user.DOB,
+		&user.Version,
+		&user.Activated,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	// Return the matching user.
+	return &user, nil
 }

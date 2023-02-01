@@ -1,7 +1,12 @@
 {{define "subject"}}Welcome to Greenlight!{{ end }}
 {{define "plainBody"}}
 Hi, {{.FirstName}} Thanks for signing up for a Library account. We're excited to
-have you on board! For future reference, your user ID number is {{.ID}}. Thanks,
+have you on board! For future reference, your user ID number is {{.ID}}. 
+Please send a request to the `PUT /v1/users/activated` endpoint with the following JSON
+body to activate your account:
+{"token": "{{.activationToken}}"}
+Please note that this is a one-time use token and it will expire in 3 days.
+Thanks,
 The Library Team
 {{ end }}
 {{define "htmlBody"}}
@@ -18,6 +23,12 @@ The Library Team
       board!
     </p>
     <p>For future reference, your user ID number is {{.ID}}.</p>
+    <p>Please send a request to the <code>PUT /v1/users/activated</code> endpoint with the
+  following JSON body to activate your account:</p>
+  <pre><code>
+  {"token": "{{.activationToken}}"}
+  </code></pre>
+  <p>Please note that this is a one-time use token and it will expire in 3 days.</p>
     <p>Thanks,</p>
     <p>The Library Team</p>
   </body>

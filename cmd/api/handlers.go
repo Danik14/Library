@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/Danik14/library/internal/data"
 	"github.com/Danik14/library/internal/models"
@@ -152,6 +153,14 @@ func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request
 		app.serverErrorResponse(w, r, err)
 		return
 	}
+
+	// After the user record has been created in the database, generate a new activation
+	// token for the user.
+	token, err := app.models.Tokens.New(user.ID, 3*24*time.Hour, models.ScopeActivation)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
 	// When sending a HTTP response, we want to include a Location header to let the
 	// client know which URL they can find the newly-created resource at. We make an
 	// empty http.Header map and then use the Set() method to add a new Location header,
@@ -162,7 +171,11 @@ func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request
 	// Use the background helper to execute an anonymous function that sends the welcome
 	// email.
 	app.background(func() {
-		err = app.mailer.Send(user.Email, "user_welcome.tmpl", user)
+		data := map[string]any{
+			"activationToken": token.Plaintext,
+			"userID":          user.ID,
+		}
+		err = app.mailer.Send(user.Email, "user_welcome.tmpl", data)
 		if err != nil {
 			app.logger.PrintError(err, nil)
 		}
@@ -198,7 +211,63 @@ func (app *application) showBookHandler(w http.ResponseWriter, r *http.Request) 
 		app.serverErrorResponse(w, r, err)
 	}
 }
-
+func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
+	// Parse the plaintext activation token from the request body.
+	var input struct {
+		TokenPlaintext string `json:"token"`
+	}
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// Validate the plaintext token provided by the client.
+	v := validator.New()
+	if models.ValidateTokenPlaintext(v, input.TokenPlaintext); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// Retrieve the details of the user associated with the token using the
+	// GetForToken() method (which we will create in a minute). If no matching record
+	// is found, then we let the client know that the token they provided is not valid.
+	user, err := app.models.Users.GetForToken(models.ScopeActivation, input.TokenPlaintext)
+	if err != nil {
+		switch {
+		case errors.Is(err, models.ErrRecordNotFound):
+			v.AddError("token", "invalid or expired activation token")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// Update the user's activation status.
+	user.Activated = true
+	// Save the updated user record in our database, checking for any edit conflicts in
+	// the same way that we did for our movie records.
+	err = app.models.Users.Update(user)
+	if err != nil {
+		switch {
+		case errors.Is(err, models.ErrEditConflict):
+			app.editConflictResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// If everything went successfully, then we delete all activation tokens for the
+	// user.
+	err = app.models.Tokens.DeleteAllForUser(models.ScopeActivation, user.ID)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	// Send the updated user details to the client in a JSON response.
+	err = app.writeJSON(w, http.StatusOK, envelope{"user": user}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
 func (app *application) listBooksHandler(w http.ResponseWriter, r *http.Request) {
 	// To keep things consistent with our other handlers, we'll define an input struct
 	// to hold the expected values from the request query string.
