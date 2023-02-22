@@ -13,8 +13,8 @@ type Book struct {
 	CreatedAt time.Time          `json:"-"`
 	Title     string             `json:"title"`
 	Author    string             `json:"author"`
-	Year      int32              `json:"year,omitempty"`
-	Pages     Pages              `json:"pages,omitempty"`
+	Year      string             `json:"year,omitempty"`
+	Pages     string             `json:"pages,omitempty"`
 	Genres    []string           `json:"genres,omitempty"`
 }
 
@@ -30,8 +30,8 @@ func ValidateBook(v *validator.Validator, book *Book) {
 	v.Check(book.Author != "", "author", "must be provided")
 	v.Check(len(book.Author) <= 500, "author", "must not be more than 500 bytes long")
 
-	v.Check(book.Year > 0, "year", "must be more than 0")
-	v.Check(book.Pages > 0, "pages", "must be more than 0")
+	// v.Check(ParseInt(strings.Split(book.Year, " ")[1], 10, 32) > 0, "year", "must be more than 0")
+	// v.Check(book.Pages > 0, "pages", "must be more than 0")
 }
 
 // func (b BookModel) Insert(book *Book) error {
