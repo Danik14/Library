@@ -420,114 +420,137 @@ func (app *application) listUsersHandler(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-// func (app *application) updateBookHandler(w http.ResponseWriter, r *http.Request) {
-// 	// Extract the movie ID from the URL.
-// 	id, err := app.readUUIDParam(r)
-// 	if err != nil {
-// 		app.notFoundResponse(w, r)
-// 		return
-// 	}
-// 	// Fetch the existing movie record from the database, sending a 404 Not Found
-// 	// response to the client if we couldn't find a matching record.
-// 	book, err := app.models.Books.Get(id)
-// 	if err != nil {
-// 		switch {
-// 		case errors.Is(err, models.ErrRecordNotFound):
-// 			app.notFoundResponse(w, r)
-// 		default:
-// 			app.serverErrorResponse(w, r, err)
-// 		}
-// 		return
-// 	}
+func (app *application) updateBookHandler(w http.ResponseWriter, r *http.Request) {
+	// Extract the movie ID from the URL.
+	objectId, err := app.readPrimitiveObjectIdParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
 
-// 	// Declare an input struct to hold the expected data from the client.
-// 	var input struct {
-// 		Title  *string       `json:"title"`
-// 		Author *string       `json:"author"`
-// 		Year   *int32        `json:"year"`
-// 		Pages  *models.Pages `json:"pages"`
-// 		Genres []string      `json:"genres"`
-// 	}
+	// Fetch the existing movie record from the database, sending a 404 Not Found
+	// response to the client if we couldn't find a matching record.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 
-// 	err = app.readJSON(w, r, &input)
-// 	if err != nil {
-// 		app.badRequestResponse(w, r, err)
-// 		return
-// 	}
+	cursor, err := app.models.Books.DB.Find(ctx, bson.M{"_id": objectId})
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		app.logError(r, err)
+		return
+	}
 
-// 	// If the input.Title value is nil then we know that no corresponding "title" key/
-// 	// value pair was provided in the JSON request body. So we move on and leave the
-// 	// movie record unchanged. Otherwise, we update the movie record with the new title
-// 	// value. Importantly, because input.Title is a now a pointer to a string, we need
-// 	// to dereference the pointer using the * operator to get the underlying value
-// 	// before assigning it to our movie record.
-// 	if input.Title != nil {
-// 		book.Title = *input.Title
-// 	}
-// 	if input.Author != nil {
-// 		book.Author = *input.Author
-// 	}
-// 	if input.Year != nil {
-// 		book.Year = *input.Year
-// 	}
-// 	if input.Pages != nil {
-// 		book.Pages = *input.Pages
-// 	}
-// 	if input.Genres != nil {
-// 		book.Genres = input.Genres
-// 	}
+	book := &models.Book{}
 
-// 	// Validate the updated movie record, sending the client a 422 Unprocessable Entity
-// 	// response if any checks fail.
-// 	v := validator.New()
-// 	if models.ValidateBook(v, book); !v.Valid() {
-// 		app.failedValidationResponse(w, r, v.Errors)
-// 		return
-// 	}
-// 	// Intercept any ErrEditConflict error and call the new editConflictResponse()
-// 	// helper.
-// 	err = app.models.Books.Update(book)
-// 	if err != nil {
-// 		switch {
-// 		case errors.Is(err, models.ErrEditConflict):
-// 			app.editConflictResponse(w, r)
-// 		default:
-// 			app.serverErrorResponse(w, r, err)
-// 		}
-// 		return
-// 	}
-// 	// Write the updated movie record in a JSON response.
-// 	err = app.writeJSON(w, http.StatusOK, envelope{"book": book}, nil)
-// 	if err != nil {
-// 		app.serverErrorResponse(w, r, err)
-// 	}
-// }
+	err = cursor.All(ctx, book)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		app.logError(r, err)
+		return
+	}
 
-// func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Request) {
-// 	// Extract the movie ID from the URL.
-// 	id, err := app.readUUIDParam(r)
-// 	if err != nil {
-// 		app.notFoundResponse(w, r)
-// 		return
-// 	}
-// 	// Delete the movie from the database, sending a 404 Not Found response to the
-// 	// client if there isn't a matching record.
-// 	err = app.models.Books.Delete(id)
-// 	if err != nil {
-// 		switch {
-// 		case errors.Is(err, models.ErrRecordNotFound):
-// 			app.notFoundResponse(w, r)
-// 		default:
-// 			app.serverErrorResponse(w, r, err)
-// 		}
-// 		return
-// 	}
-// 	// Return a 200 OK status code along with a success message.
-// 	err = app.writeJSON(w, http.StatusOK, envelope{"message": "book successfully deleted"}, nil)
-// 	if err != nil {
-// 		app.serverErrorResponse(w, r, err)
-// 	}
-// }
+	// Declare an input struct to hold the expected data from the client.
+	var input struct {
+		Title  *string       `json:"title"`
+		Author *string       `json:"author"`
+		Year   *int32        `json:"year"`
+		Pages  *models.Pages `json:"pages"`
+		Genres []string      `json:"genres"`
+	}
+
+	err = app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	// If the input.Title value is nil then we know that no corresponding "title" key/
+	// value pair was provided in the JSON request body. So we move on and leave the
+	// movie record unchanged. Otherwise, we update the movie record with the new title
+	// value. Importantly, because input.Title is a now a pointer to a string, we need
+	// to dereference the pointer using the * operator to get the underlying value
+	// before assigning it to our movie record.
+	if input.Title != nil {
+		book.Title = *input.Title
+	}
+	if input.Author != nil {
+		book.Author = *input.Author
+	}
+	if input.Year != nil {
+		book.Year = *input.Year
+	}
+	if input.Pages != nil {
+		book.Pages = *input.Pages
+	}
+	if input.Genres != nil {
+		book.Genres = input.Genres
+	}
+
+	// Validate the updated movie record, sending the client a 422 Unprocessable Entity
+	// response if any checks fail.
+	v := validator.New()
+	if models.ValidateBook(v, book); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// Intercept any ErrEditConflict error and call the new editConflictResponse()
+	// helper.
+	// err = app.models.Books.Update(book)
+	// if err != nil {
+	// 	switch {
+	// 	case errors.Is(err, models.ErrEditConflict):
+	// 		app.editConflictResponse(w, r)
+	// 	default:
+	// 		app.serverErrorResponse(w, r, err)
+	// 	}
+	// 	return
+	// }
+	// Write the updated movie record in a JSON response.
+	err = app.writeJSON(w, http.StatusOK, envelope{"book": book}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) deleteBookHandler(w http.ResponseWriter, r *http.Request) {
+	// Extract the movie ID from the URL.
+	objectId, err := app.readPrimitiveObjectIdParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+	// Delete the movie from the database, sending a 404 Not Found response to the
+	// client if there isn't a matching record.
+	// err = app.models.Books.Delete(id)
+	// if err != nil {
+	// 	switch {
+	// 	case errors.Is(err, models.ErrRecordNotFound):
+	// 		app.notFoundResponse(w, r)
+	// 	default:
+	// 		app.serverErrorResponse(w, r, err)
+	// 	}
+	// 	return
+	// }
+
+	// Delete the book from the database.
+	result, err := app.models.Books.DB.DeleteOne(context.Background(), bson.M{"_id": objectId})
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// If no documents were deleted, send a 404 Not Found response.
+	if result.DeletedCount == 0 {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	// Return a 200 OK status code along with a success message.
+	err = app.writeJSON(w, http.StatusOK, envelope{"message": "book successfully deleted"}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
 
 // func (app *application) showUserHandler(w http.ResponseWriter, r *http.Request) {
 // 	id, err := app.readUUIDParam(r)
