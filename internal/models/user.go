@@ -14,7 +14,7 @@ type User struct {
 	FirstName      string                        `json:"firstName"`
 	LastName       string                        `json:"lastName"`
 	Email          string                        `json:"email"`
-	HashedPassword string                        `json:"-"`
+	HashedPassword []byte                        `json:"-"`
 	Marks          map[primitive.ObjectID]string `json:"marks"`
 	DOB            time.Time                     `json:"dob"` // date of birth
 }
@@ -35,10 +35,10 @@ func ValidateUser(v *validator.Validator, user *User) {
 		v.Check(len(user.Email) <= 500, "email", "must not be more than 500 bytes long")
 		v.Check(validator.Matches(user.Email, validator.EmailRX), "email", "email format is not correct")
 	}
-	if user.HashedPassword != "" {
-		// v.Check(user.HashedPassword != "", "password", "must be provided")
-		v.Check(len(user.HashedPassword) <= 500, "password", "must not be more than 500 bytes long")
-	}
+	// if user.HashedPassword != "" {
+	// 	// v.Check(user.HashedPassword != "", "password", "must be provided")
+	// 	v.Check(len(user.HashedPassword) <= 500, "password", "must not be more than 500 bytes long")
+	// }
 	if (user.DOB != time.Time{}) {
 		// v.Check(user.DOB != time.Time{}, "dob", "must be provided")
 		year := int32(user.DOB.Year())
