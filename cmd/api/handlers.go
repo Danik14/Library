@@ -299,8 +299,7 @@ func (app *application) sign_in(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) listUsersHandler(w http.ResponseWriter, r *http.Request) {
-	// To keep things consistent with our other handlers, we'll define an input struct
-	// to hold the expected values from the request query string.
+
 	var input struct {
 		FirstName string
 		LastName  string
@@ -311,9 +310,7 @@ func (app *application) listUsersHandler(w http.ResponseWriter, r *http.Request)
 	v := validator.New()
 	// Call r.URL.Query() to get the url.Values map containing the query string data.
 	qs := r.URL.Query()
-	// Use our helpers to extract the title and genres query string values, falling back
-	// to defaults of an empty string and an empty slice respectively if they are not
-	// provided by the client.
+
 	input.FirstName = app.readString(qs, "firstName", "")
 	input.LastName = app.readString(qs, "lastName", "")
 	// Get the page and page_size query string values as integers. Notice that we set
