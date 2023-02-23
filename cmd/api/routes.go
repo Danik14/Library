@@ -11,10 +11,21 @@ func (app *application) routes() http.Handler {
 
 	router.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
 
+	// router.HandlerFunc(http.MethodGet, "/book/:id", app.showBookHandler)
+	// router.HandlerFunc(http.MethodGet, "/book", app.listBooksHandler)
+	// router.HandlerFunc(http.MethodPost, "/book", app.createBookHandler)
+
+	// router.HandlerFunc(http.MethodGet, "/", app.listAllBooks)
+
+	// router.HandleFunc("/user", app.listAllUsers).Methods(http.MethodGet)
+	// router.HandlerFunc(http.MethodGet, "/user", app.listUsersHandler)
+	// router.HandlerFunc(http.MethodPost, "/user", app.createUserHandler)
+	// router.HandlerFunc(http.MethodGet, "/user/:id", app.showUserHandler)
+	router.HandlerFunc(http.MethodPatch, "/book/:id", app.updateBookHandler)
 	router.HandlerFunc(http.MethodGet, "/book/:id", app.showBookHandler)
 	router.HandlerFunc(http.MethodGet, "/book", app.listBooksHandler)
 	router.HandlerFunc(http.MethodPost, "/book", app.createBookHandler)
-
+	router.HandlerFunc(http.MethodDelete, "/book/:id", app.deleteBookHandler)
 	router.HandlerFunc(http.MethodGet, "/user/:id", app.showUserHandler)
 	router.HandlerFunc(http.MethodGet, "/user", app.listUsersHandler)
 	router.HandlerFunc(http.MethodPost, "/user", app.createUserHandler)

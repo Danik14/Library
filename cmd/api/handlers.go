@@ -12,6 +12,7 @@ import (
 	"github.com/Danik14/library/internal/validator"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -79,23 +80,20 @@ func (app *application) showBookHandler(w http.ResponseWriter, r *http.Request) 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	cursor, err := app.models.Books.DB.Find(ctx, bson.M{"_id": objectId})
+	book := models.Book{}
+
+	err = app.models.Books.DB.FindOne(ctx, bson.M{"_id": objectId}).Decode(&book)
 	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		app.logError(r, err)
+		if err == mongo.ErrNoDocuments {
+			app.notFoundResponse(w, r)
+		} else {
+			app.serverErrorResponse(w, r, err)
+			app.logError(r, err)
+		}
 		return
 	}
 
-	books := []models.Book{}
-
-	err = cursor.All(ctx, &books)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		app.logError(r, err)
-		return
-	}
-
-	err = app.writeJSON(w, http.StatusOK, envelope{"book": books}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"book": book}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
@@ -157,13 +155,6 @@ func (app *application) listBooksHandler(w http.ResponseWriter, r *http.Request)
 	}
 	defer searchquerydb.Close(ctx)
 
-	// // Call the GetAll() method to retrieve the books, passing in the various filter
-	// // parameters.
-	// books, err := app.models.Books.GetAll(input.Title, input.Author, input.Genres, input.Filters)
-	// if err != nil {
-	// 	app.serverErrorResponse(w, r, err)
-	// 	return
-	// }
 	// Send a JSON response containing the movie data.
 	err = app.writeJSON(w, http.StatusOK, envelope{"books": books}, nil)
 	if err != nil {
@@ -436,24 +427,25 @@ func (app *application) updateUserHandler(w http.ResponseWriter, r *http.Request
 }
 func (app *application) updateBookHandler(w http.ResponseWriter, r *http.Request) {
 	objectId, err := app.readPrimitiveObjectIdParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
 	// Fetch the existing movie record from the database, sending a 404 Not Found
 	// response to the client if we couldn't find a matching record.
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	cursor, err := app.models.Books.DB.Find(ctx, bson.M{"_id": objectId})
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		app.logError(r, err)
-		return
-	}
+	book := models.Book{}
 
-	book := &models.Book{}
-
-	err = cursor.All(ctx, book)
+	err = app.models.Books.DB.FindOne(ctx, bson.M{"_id": objectId}).Decode(&book)
 	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		app.logError(r, err)
+		if err == mongo.ErrNoDocuments {
+			app.notFoundResponse(w, r)
+		} else {
+			app.serverErrorResponse(w, r, err)
+			app.logError(r, err)
+		}
 		return
 	}
 
@@ -497,22 +489,39 @@ func (app *application) updateBookHandler(w http.ResponseWriter, r *http.Request
 	// Validate the updated movie record, sending the client a 422 Unprocessable Entity
 	// response if any checks fail.
 	v := validator.New()
-	if models.ValidateBook(v, book); !v.Valid() {
+	if models.ValidateBook(v, &book); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
-	// Intercept any ErrEditConflict error and call the new editConflictResponse()
-	// helper.
-	// err = app.models.Books.Update(book)
-	// if err != nil {
-	// 	switch {
-	// 	case errors.Is(err, models.ErrEditConflict):
-	// 		app.editConflictResponse(w, r)
-	// 	default:
-	// 		app.serverErrorResponse(w, r, err)
-	// 	}
-	// 	return
-	// }
+
+	// Update the book record in the database.
+	update := bson.M{
+		"$set": bson.M{
+			"title":  book.Title,
+			"author": book.Author,
+			"year":   book.Year,
+			"pages":  book.Pages,
+			"genres": book.Genres,
+		},
+	}
+
+	result, err := app.models.Books.DB.UpdateOne(
+		ctx,
+		bson.M{"_id": objectId},
+		update,
+	)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		app.logError(r, err)
+		return
+	}
+
+	// Check if no documents were updated.
+	if result.ModifiedCount == 0 {
+		app.notFoundResponse(w, r)
+		return
+	}
+
 	// Write the updated movie record in a JSON response.
 	err = app.writeJSON(w, http.StatusOK, envelope{"book": book}, nil)
 	if err != nil {
@@ -527,18 +536,6 @@ func (app *application) deleteBookHandler(w http.ResponseWriter, r *http.Request
 		app.notFoundResponse(w, r)
 		return
 	}
-	// Delete the movie from the database, sending a 404 Not Found response to the
-	// client if there isn't a matching record.
-	// err = app.models.Books.Delete(id)
-	// if err != nil {
-	// 	switch {
-	// 	case errors.Is(err, models.ErrRecordNotFound):
-	// 		app.notFoundResponse(w, r)
-	// 	default:
-	// 		app.serverErrorResponse(w, r, err)
-	// 	}
-	// 	return
-	// }
 
 	// Delete the book from the database.
 	result, err := app.models.Books.DB.DeleteOne(context.Background(), bson.M{"_id": objectId})
