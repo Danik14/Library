@@ -24,6 +24,8 @@ type password struct {
 	hash      []byte
 }
 
+var AnonymousUser = &User{}
+
 type User struct {
 	ID             uuid.UUID `json:"id"`
 	CreatedAt      time.Time `json:"-"`
@@ -34,6 +36,10 @@ type User struct {
 	DOB            CivilTime `json:"dob"` // date of birth
 	Activated      bool      `json:"activated"`
 	Version        int32     `json:"version"`
+}
+
+func (u *User) IsAnonymous() bool {
+	return u == AnonymousUser
 }
 
 // The Set() method calculates the bcrypt hash of a plaintext password, and stores both
@@ -310,6 +316,17 @@ func (u UserModel) Delete(id uuid.UUID) error {
 	return nil
 }
 
+func ValidateEmail(v *validator.Validator, email string) {
+	v.Check(email != "", "email", "must be provided")
+	v.Check(len(email) <= 500, "email", "must not be more than 500 bytes long")
+	v.Check(validator.Matches(email, validator.EmailRX), "email", "email format is not correct")
+}
+
+func ValidatePasswordPlaintext(v *validator.Validator, password string) {
+	v.Check(password != "", "password", "must be provided")
+	v.Check(len(password) <= 500, "password", "must not be more than 500 bytes long")
+}
+
 func ValidateUser(v *validator.Validator, user *User) {
 	// Use the Check() method to execute our validation checks. This will add the
 	// provided key and error message to the errors map if the check does not evaluate
@@ -322,13 +339,13 @@ func ValidateUser(v *validator.Validator, user *User) {
 	v.Check(user.LastName != "", "lastName", "must be provided")
 	v.Check(len(user.LastName) <= 500, "lastName", "must not be more than 500 bytes long")
 
-	v.Check(user.Email != "", "email", "must be provided")
-	v.Check(len(user.Email) <= 500, "email", "must not be more than 500 bytes long")
-	v.Check(validator.Matches(user.Email, validator.EmailRX), "email", "email format is not correct")
-
-	v.Check(*user.HashedPassword.plaintext != "", "password", "must be provided")
-	v.Check(len(*user.HashedPassword.plaintext) <= 500, "password", "must not be more than 500 bytes long")
-
+	// v.Check(user.Email != "", "email", "must be provided")
+	// v.Check(len(user.Email) <= 500, "email", "must not be more than 500 bytes long")
+	// v.Check(validator.Matches(user.Email, validator.EmailRX), "email", "email format is not correct")
+	ValidateEmail(v, user.Email)
+	// v.Check(*user.HashedPassword.plaintext != "", "password", "must be provided")
+	// v.Check(len(*user.HashedPassword.plaintext) <= 500, "password", "must not be more than 500 bytes long")
+	ValidatePasswordPlaintext(v, *user.HashedPassword.plaintext)
 	v.Check(time.Time(user.DOB) != time.Time{}, "dob", "must be provided")
 	year := int32(time.Time(user.DOB).Year())
 	month := int32(time.Time(user.DOB).Month())
