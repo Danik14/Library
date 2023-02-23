@@ -1,7 +1,7 @@
-{{define "subject"}}Welcome to Greenlight!{{ end }}
+{{define "subject"}}Welcome to E-Library!{{ end }}
 {{define "plainBody"}}
-Hi, {{.FirstName}} Thanks for signing up for a Library account. We're excited to
-have you on board! For future reference, your user ID number is {{.ID}}. 
+Hi, {{.firstName}} Thanks for signing up for a Library account. We're excited to
+have you on board! For future reference, your user ID number is {{.userID}}. 
 Please send a request to the `PUT /v1/users/activated` endpoint with the following JSON
 body to activate your account:
 {"token": "{{.activationToken}}"}
@@ -17,12 +17,12 @@ The Library Team
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   </head>
   <body>
-    <p>Hi, {{.FirstName}}</p>
+    <p>Hi, {{.firstName}}</p>
     <p>
       Thanks for signing up for a Library account. We're excited to have you on
       board!
     </p>
-    <p>For future reference, your user ID number is {{.ID}}.</p>
+    <p>For future reference, your user ID number is {{.userID}}.</p>
     <p>Please send a request to the <code>PUT /v1/users/activated</code> endpoint with the
   following JSON body to activate your account:</p>
   <pre><code>

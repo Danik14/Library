@@ -186,6 +186,7 @@ func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request
 		data := map[string]any{
 			"activationToken": token.Plaintext,
 			"userID":          user.ID,
+			"firstName":       user.FirstName,
 		}
 		err = app.mailer.Send(user.Email, "user_welcome.tmpl", data)
 		if err != nil {
