@@ -140,6 +140,7 @@ func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	// Initialize a new Validator.
+
 	v := validator.New()
 	// Call the ValidateMovie() function and return a response containing the errors if
 	// any of the checks fail.
@@ -517,6 +518,7 @@ func (app *application) updateUserHandler(w http.ResponseWriter, r *http.Request
 
 	// Validate the updated movie record, sending the client a 422 Unprocessable Entity
 	// response if any checks fail.
+
 	v := validator.New()
 	if models.ValidateUser(v, user); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)

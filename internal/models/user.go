@@ -343,9 +343,21 @@ func ValidateUser(v *validator.Validator, user *User) {
 	// v.Check(len(user.Email) <= 500, "email", "must not be more than 500 bytes long")
 	// v.Check(validator.Matches(user.Email, validator.EmailRX), "email", "email format is not correct")
 	ValidateEmail(v, user.Email)
+
 	// v.Check(*user.HashedPassword.plaintext != "", "password", "must be provided")
 	// v.Check(len(*user.HashedPassword.plaintext) <= 500, "password", "must not be more than 500 bytes long")
-	ValidatePasswordPlaintext(v, *user.HashedPassword.plaintext)
+	fmt.Println(user.HashedPassword.plaintext)
+	if user.HashedPassword.plaintext != nil {
+		ValidatePasswordPlaintext(v, *user.HashedPassword.plaintext)
+	}
+	// If the password hash is ever nil, this will be due to a logic error in our
+	// codebase (probably because we forgot to set a password for the user). It's a
+	// useful sanity check to include here, but it's not a problem with the data
+	// provided by the client. So rather than adding an error to the validation map we
+	// raise a panic instead.
+	if user.HashedPassword.hash == nil {
+		panic("missing password hash for user")
+	}
 	v.Check(time.Time(user.DOB) != time.Time{}, "dob", "must be provided")
 	year := int32(time.Time(user.DOB).Year())
 	month := int32(time.Time(user.DOB).Month())
