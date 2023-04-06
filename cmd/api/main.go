@@ -77,7 +77,7 @@ func main() {
 
 	flag.Parse()
 
-	cfg.db.dsn = os.Getenv("DB-DSN") //in file .env: DB-DSN="postgres://user:password@localhost/dbName?sslmode=disable"
+	cfg.db.dsn = os.Getenv("DB_DSN") //in file .env: DB_DSN="postgres://user:password@localhost/dbName?sslmode=disable"
 	fmt.Println(cfg)
 	db, err := openDB(cfg)
 	if err != nil {
