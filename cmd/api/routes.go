@@ -32,3 +32,17 @@ func (app *application) routes() http.Handler {
 	// Wrap the router with the panic recovery middleware.
 	return app.recoverPanic(app.rateLimit(app.authenticate(router)))
 }
+
+func (app *application) routesTest() http.Handler {
+	router := httprouter.New()
+
+	router.NotFound = http.HandlerFunc(app.notFoundResponse)
+	router.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
+
+	router.HandlerFunc(http.MethodGet, "/v1/books", app.listBooksHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/books", app.createBookHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/books/:id", app.showBookHandler)
+	router.HandlerFunc(http.MethodDelete, "/v1/books/:id", app.deleteBookHandler)
+
+	return router
+}

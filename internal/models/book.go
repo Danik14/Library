@@ -30,11 +30,11 @@ type BookModel struct {
 
 func (b BookModel) Insert(book *Book) error {
 	// return &User{CreatedAt: time.Now(), FirstName: firstName, LastName: lastName, Email: email, HashedPassword: password, DOB: dob, Version: version}, nil
-	// Define the SQL query for inserting a new record in the movies table and returning
+	// Define the SQL query for inserting a new record in the books table and returning
 	// the system-generated data.
 	query := `INSERT INTO books (title, author, year, pages, genres) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at, version;`
 	// Create an args slice containing the values for the placeholder parameters from
-	// the movie struct. Declaring this slice immediately next to our SQL query helps to
+	// the book struct. Declaring this slice immediately next to our SQL query helps to
 	// make it nice and clear *what values are being used where* in the query.
 
 	args := []any{book.Title, book.Author, book.Year, book.Pages, pq.Array(book.Genres)}
@@ -52,7 +52,7 @@ func (b BookModel) Get(id uuid.UUID) (*Book, error) {
 	query := `
 SELECT id, created_at, title, year, author, pages, genres, version FROM books
 WHERE id = $1`
-	// Declare a Movie struct to hold the data returned by the query.
+	// Declare a Book struct to hold the data returned by the query.
 	var book Book
 
 	// Use the context.WithTimeout() function to create a context.Context which carries a
@@ -76,7 +76,7 @@ WHERE id = $1`
 	err := b.DB.QueryRowContext(ctx, query, id).Scan(&book.ID,
 		&book.CreatedAt, &book.Title, &book.Year, &book.Author, &book.Pages, pq.Array(&book.Genres), &book.Version,
 	)
-	// Handle any errors. If there was no matching movie found, Scan() will return
+	// Handle any errors. If there was no matching book found, Scan() will return
 	// a sql.ErrNoRows error. We check for this and return our custom ErrRecordNotFound
 	// error instead.
 	if err != nil {
@@ -175,7 +175,7 @@ RETURNING version`
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	// Execute the SQL query. If no matching row could be found, we know the movie
+	// Execute the SQL query. If no matching row could be found, we know the book
 	// version has changed (or the record has been deleted) and we return our custom
 	// ErrEditConflict error.
 	err := b.DB.QueryRowContext(ctx, query, args...).Scan(&book.Version)
@@ -192,7 +192,7 @@ RETURNING version`
 }
 
 func (b BookModel) Delete(id uuid.UUID) error {
-	// Return an ErrRecordNotFound error if the movie ID is less than 1.
+	// Return an ErrRecordNotFound error if the book ID is less than 1.
 	// Construct the SQL query to delete the record.
 	query := `
 DELETE FROM books WHERE id = $1`
@@ -236,4 +236,42 @@ func ValidateBook(v *validator.Validator, book *Book) {
 
 	v.Check(book.Year > 0, "year", "must be more than 0")
 	v.Check(book.Pages > 0, "pages", "must be more than 0")
+}
+
+type MockBookModel struct{}
+
+func (b MockBookModel) Insert(book *Book) error {
+	return nil
+}
+
+func (b MockBookModel) Get(id uuid.UUID) (*Book, error) {
+	switch id {
+	case uuid.UUID{}:
+		return &Book{
+			ID:        uuid.UUID{},
+			CreatedAt: time.Now(),
+			Year:      2023,
+			Pages:     105,
+			Title:     "Test Mock",
+			Genres:    []string{""},
+		}, nil
+	default:
+		return nil, ErrRecordNotFound
+	}
+}
+func (b MockBookModel) Update(book *Book) error {
+	return nil
+}
+
+func (b MockBookModel) Delete(id uuid.UUID) error {
+	switch id {
+	case uuid.UUID{}:
+		return nil
+	default:
+		return ErrRecordNotFound
+	}
+}
+
+func (b MockBookModel) GetAll(title string, author string, genres []string, filters data.Filters) ([]*Book, data.Metadata, error) {
+	return nil, data.Metadata{}, nil
 }
